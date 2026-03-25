@@ -1,23 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function Hero() {
-  const videoMobileRef = useRef<HTMLVideoElement>(null);
-  const videoDesktopRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const parallaxRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const mobile = videoMobileRef.current;
-    const desktop = videoDesktopRef.current;
-    if (mobile) void mobile.play().catch(() => {});
-    if (desktop) void desktop.play().catch(() => {});
+    const mediaQuery = window.matchMedia("(max-width: 767.98px)");
+    const updateViewport = () => setIsMobile(mediaQuery.matches);
+
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+
+    return () => mediaQuery.removeEventListener("change", updateViewport);
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          void video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(video);
+
+    return () => observer.disconnect();
+  }, [isMobile]);
 
   useEffect(() => {
     const el = parallaxRef.current;
     if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      el.style.transform = "translateY(0)";
+      return;
+    }
 
     let ticking = false;
     const onScroll = () => {
@@ -32,8 +60,14 @@ export default function Hero() {
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const videoSrc = isMobile ? "/videos/hero-m.mp4" : "/videos/hero.mp4";
+  const posterSrc = isMobile
+    ? "/images/hero-poster-m.jpg"
+    : "/images/hero-poster.jpg";
 
   return (
     <section id="intro">
@@ -52,28 +86,17 @@ export default function Hero() {
       <div className="intro__image">
         <div className="overlay-black" />
         <div className="parallax" ref={parallaxRef}>
-          <div className="media-video parallax-image mobile">
+          <div className="media-video parallax-image">
             <video
-              ref={videoMobileRef}
+              ref={videoRef}
+              autoPlay
               loop
               muted
               playsInline
               preload="metadata"
-              poster="/images/hero-poster-m.jpg"
+              poster={posterSrc}
             >
-              <source src="/videos/hero-m.mp4" type="video/mp4" />
-            </video>
-          </div>
-          <div className="media-video parallax-image desktop">
-            <video
-              ref={videoDesktopRef}
-              loop
-              muted
-              playsInline
-              preload="metadata"
-              poster="/images/hero-poster.jpg"
-            >
-              <source src="/videos/hero.mp4" type="video/mp4" />
+              <source src={videoSrc} type="video/mp4" />
             </video>
           </div>
         </div>

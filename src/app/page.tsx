@@ -1,4 +1,3 @@
-import Preloader from '@/components/Preloader';
 import MotionProvider from '@/components/MotionProvider';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
@@ -14,7 +13,6 @@ export default function Home() {
   return (
     <div className="index">
       <MotionProvider />
-      <Preloader />
       <Header />
       <main id="main">
         <Hero />

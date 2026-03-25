@@ -5,11 +5,14 @@ import Lenis from "lenis";
 
 export default function LenisProvider() {
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
     const lenis = new Lenis({
-      duration: 1.15,
+      duration: 1,
       smoothWheel: true,
-      smoothTouch: false,
-      wheelMultiplier: 0.95,
+      wheelMultiplier: 0.9,
       touchMultiplier: 1,
       easing: (t: number) => 1 - Math.pow(1 - t, 4),
     });

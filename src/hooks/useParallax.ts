@@ -11,6 +11,14 @@ export function useParallax<T extends HTMLElement>(
     const el = ref.current;
     if (!el) return;
 
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      window.innerWidth < 768
+    ) {
+      el.style.setProperty("--parallax-y", "0px");
+      return;
+    }
+
     let ticking = false;
 
     const update = () => {
@@ -49,6 +57,15 @@ export function useParallaxMultiple(
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      window.innerWidth < 768
+    ) {
+      const elements = container.querySelectorAll<HTMLElement>(selector);
+      elements.forEach((el) => el.style.setProperty("--parallax-y", "0px"));
+      return;
+    }
 
     let ticking = false;
     const elements = container.querySelectorAll<HTMLElement>(selector);
