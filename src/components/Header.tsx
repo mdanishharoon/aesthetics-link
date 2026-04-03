@@ -87,11 +87,11 @@ export default function Header() {
               </li>
               <li className="navbar-menu-list-item">
                 <Link
-                  href="/journal"
+                  href="/about"
                   className="navbar-link-text link"
                   onClick={() => setMenuOpen(false)}
                 >
-                  Journal
+                  About Us
                 </Link>
               </li>
             </ul>
@@ -103,9 +103,9 @@ export default function Header() {
           <div className="navbar-cta">
             <ul className="navbar-menu-list">
               <li className="navbar-menu-list-item">
-                <button
+                <Link
+                  href="/cart"
                   id="cart-nav"
-                  type="button"
                   className="navbar-menu-list-item-link"
                   aria-label="Cart"
                   style={{
@@ -138,7 +138,7 @@ export default function Header() {
                       strokeLinecap="round"
                     />
                   </svg>
-                </button>
+                </Link>
               </li>
               <div className="border-vertical d-none d-md-block" />
               <li className="navbar-menu-list-item d-none d-md-block">
