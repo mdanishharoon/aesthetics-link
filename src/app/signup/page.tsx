@@ -14,7 +14,7 @@ export default function SignUp() {
                 <div className="auth-visual">
                     <div className="auth-visual-text">
                         <h2>Create an account.</h2>
-                        <p>Join truekind to discover science-backed skincare.</p>
+                        <p>Join AestheticsLink to discover science-backed skincare.</p>
                     </div>
                 </div>
 

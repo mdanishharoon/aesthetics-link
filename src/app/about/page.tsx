@@ -88,7 +88,7 @@ export default function About() {
                         <div style={{ marginBottom: "3rem" }}>
                             <span className="superscript" style={{ marginBottom: "1rem", display: "inline-block" }}>Our Pillars</span>
                             <h2 className="about-heading font-serif" style={{ fontSize: "3.5rem" }}>
-                                The TrueKind Mandate.
+                                The AestheticsLink Mandate.
                             </h2>
                         </div>
 

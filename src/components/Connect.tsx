@@ -49,7 +49,7 @@ export default function Connect() {
             </h2>
             <div className="connect__socmed">
               <a
-                href="https://www.instagram.com/truekind.skin/"
+                href="https://www.instagram.com/aestheticslink/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="icon-global text-uppercase"
@@ -67,12 +67,12 @@ export default function Connect() {
 
           <div className="col-md-2 d-flex align-items-end d-none d-md-block">
             <div className="media-img connect__end w-full parallax-scroll">
-               <img
-                 ref={rightImgRef}
-                 alt="Connect 3"
-                 src="/images/IMG_7461.jpg"
-                 className="parallax-image-asset"
-               />
+              <img
+                ref={rightImgRef}
+                alt="Connect 3"
+                src="/images/IMG_7461.jpg"
+                className="parallax-image-asset"
+              />
             </div>
           </div>
         </div>

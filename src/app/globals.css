@@ -5372,6 +5372,34 @@ h5,
   stroke: #fff !important;
 }
 
+/* Force dark header on light content pages (About, Cart) */
+.about-page #header:not(.scrolled) .navbar-link-text,
+.cart-page #header:not(.scrolled) .navbar-link-text {
+  color: var(--color-text) !important;
+}
+
+.about-page #header:not(.scrolled) .navbar-logo,
+.about-page #header:not(.scrolled) .navbar-logo span,
+.cart-page #header:not(.scrolled) .navbar-logo,
+.cart-page #header:not(.scrolled) .navbar-logo span {
+  color: var(--color-text) !important;
+}
+
+.about-page #header:not(.scrolled) .navbar-hamburger-line,
+.cart-page #header:not(.scrolled) .navbar-hamburger-line {
+  background: var(--color-text) !important;
+}
+
+.about-page #header:not(.scrolled) .navbar-cta,
+.cart-page #header:not(.scrolled) .navbar-cta {
+  background: transparent !important;
+}
+
+.about-page #header:not(.scrolled) .navbar-cta svg path,
+.cart-page #header:not(.scrolled) .navbar-cta svg path {
+  stroke: var(--color-text) !important;
+}
+
 /* Desktop 50/50 split */
 .auth-split {
   display: flex;

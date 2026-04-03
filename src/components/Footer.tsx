@@ -50,10 +50,10 @@ export default function Footer() {
                 <p className="subtitle text-gray2">Follow Us</p>
                 <ul>
                   <li>
-                    <a href="https://www.instagram.com/truekind.skin/" target="_blank" rel="noopener noreferrer" className="link">Instagram</a>
+                    <a href="https://www.instagram.com/aestheticslink/" target="_blank" rel="noopener noreferrer" className="link">Instagram</a>
                   </li>
                   <li>
-                    <a href="https://www.facebook.com/truekind.skin/" target="_blank" rel="noopener noreferrer" className="link">Facebook</a>
+                    <a href="https://www.facebook.com/aestheticslink/" target="_blank" rel="noopener noreferrer" className="link">Facebook</a>
                   </li>
                 </ul>
               </div>
@@ -116,10 +116,8 @@ export default function Footer() {
               <li><p className="credits">Credits</p></li>
               <li>
                 <p className="name">
-                  Website By:{" "}
-                  <a href="https://abhishekjha.me/" target="_blank" rel="noopener noreferrer">Abhishek</a>
-                  {" & "}
-                  <a href="https://reksaandhika.com/" target="_blank" rel="noopener noreferrer">Reksa</a>
+                  Developed by:{" "}
+                  <a href="https://quantumimpact.io/" target="_blank" rel="noopener noreferrer">Quantum Impact</a>
                 </p>
               </li>
             </ul>
