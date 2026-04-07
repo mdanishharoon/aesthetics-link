@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
+import { useState } from "react";
 
 function ArrowLongIcon() {
   return (
@@ -22,6 +23,42 @@ export default function ProductDetail({ product }: { product: Product }) {
   const heroImgRef = useParallax<HTMLImageElement>(0.12);
   const detailImgRef = useParallax<HTMLImageElement>(0.15);
   const textureRef = useParallax<HTMLImageElement>(0.18);
+  const [adding, setAdding] = useState(false);
+  const [addStatus, setAddStatus] = useState<string | null>(null);
+
+  const handleAddToBag = async () => {
+    if (!product.wooId || adding) {
+      return;
+    }
+
+    setAdding(true);
+    setAddStatus(null);
+
+    try {
+      const response = await fetch("/api/woo/cart/add-item", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          id: product.wooId,
+          quantity: 1,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(payload?.message ?? "Unable to add this item to your bag.");
+      }
+
+      setAddStatus("Added to bag");
+    } catch (error) {
+      setAddStatus(error instanceof Error ? error.message : "Unable to add this item to your bag.");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
     <div className="product-page">
@@ -46,9 +83,15 @@ export default function ProductDetail({ product }: { product: Product }) {
             </h1>
             <p className="product-intro__tagline">{product.tagline}</p>
             <p className="product-intro__price">{product.price}</p>
-            <button type="button" className="btn product-intro__cta">
-              Add to Bag
+            <button
+              type="button"
+              className="btn product-intro__cta"
+              onClick={handleAddToBag}
+              disabled={!product.wooId || adding}
+            >
+              {adding ? "Adding..." : "Add to Bag"}
             </button>
+            {addStatus ? <p style={{ marginTop: "1rem", fontSize: "0.85rem" }}>{addStatus}</p> : null}
           </div>
 
           <div className="product-intro__image">

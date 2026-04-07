@@ -10,6 +10,7 @@ export type KeyIngredient = {
 };
 
 export type Product = {
+  wooId?: number;
   slug: string;
   name: string;
   shortName: string;
