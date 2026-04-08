@@ -46,6 +46,7 @@ Copy `.env.example` to `.env.local` and set:
 ```bash
 WOOCOMMERCE_STORE_URL=https://checkout.yourdomain.com
 NEXT_PUBLIC_WOOCOMMERCE_CHECKOUT_URL=https://checkout.yourdomain.com/checkout
+WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET=replace-with-strong-random-secret
 REVALIDATE_SECRET=replace-with-strong-random-secret
 WOOCOMMERCE_WEBHOOK_SECRET=replace-with-woocommerce-webhook-secret
 ```
@@ -64,7 +65,7 @@ Use the WordPress site URL (the one that serves `/wp-json/wc/store/v1/...`).
 - Product detail page (`/products/[slug]`) uses live Woo product data.
 - Add-to-cart uses Woo `cart/add-item`.
 - Cart page (`/cart`) uses Woo cart totals and line items.
-- Checkout button redirects users to native Woo checkout (`NEXT_PUBLIC_WOOCOMMERCE_CHECKOUT_URL`).
+- Checkout button uses `/api/checkout/bridge` to sync cart into Woo session, then redirects to native Woo checkout.
 - Login (`/login`), Sign up (`/signup`), and Profile (`/profile`) are wired to `app/api/auth/[action]/route.ts`.
 - Verification (`/verify-email`), forgot password (`/forgot-password`), and reset password (`/reset-password`) are wired.
 - Clinic/B2B registrations submit business data and default to `clinic_pending` role/status until admin approval.
@@ -73,9 +74,10 @@ Use the WordPress site URL (the one that serves `/wp-json/wc/store/v1/...`).
 ### 3) Notes
 
 - Cart and nonce tokens are persisted in secure HTTP-only cookies by the Next.js API route.
+- Checkout bridge signs cart payloads with `WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET` (5-minute TTL).
 - Native Woo checkout handles Stripe and other gateway-specific flows.
 - Recommended architecture is same apex domain, e.g. `www.yourdomain.com` + `checkout.yourdomain.com`.
-- On Woo/WordPress side, configure cookies/session for subdomain compatibility (for example, `COOKIE_DOMAIN=.yourdomain.com`).
+- On Woo/WordPress side, set `AL_B2B_CHECKOUT_BRIDGE_SECRET` to the same value as `WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET`.
 
 ### 4) Auth and B2B Workflow Backend
 
@@ -99,7 +101,7 @@ After installation in Woo/WordPress:
 
 - Retail signups become `customer` with clinic status `approved`.
 - Clinic signups become `clinic_pending` with clinic status `pending`.
-- All signups require email verification before first login.
+- Retail signups can login immediately; clinic signups must verify email before first login.
 - Admin reviews applications in `Users -> Clinic Applications`.
 - Approve sets role/status to `wholesale_customer` + `approved`.
 - Reject sets role/status to `customer` + `rejected`.
@@ -109,6 +111,7 @@ Optional in `wp-config.php`:
 ```php
 define('AL_B2B_FRONTEND_URL', 'https://www.yourdomain.com');
 define('AL_B2B_TURNSTILE_SECRET', 'your-cloudflare-turnstile-secret');
+define('AL_B2B_CHECKOUT_BRIDGE_SECRET', 'same-value-as-WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET');
 ```
 
 Wholesale pricing behavior:

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 function secureCompare(a: string, b: string): boolean {
   const aBuffer = Buffer.from(a);
@@ -42,11 +42,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   revalidateTag("woo:products", { expire: 0 });
+  revalidatePath("/products");
+  revalidatePath("/products/[slug]", "page");
 
+  let slug: string | null = null;
   try {
     const payload = JSON.parse(body) as { id?: number; slug?: string };
     if (payload.slug) {
+      slug = payload.slug;
       revalidateTag(`woo:product:${payload.slug}`, { expire: 0 });
+      revalidatePath(`/products/${payload.slug}`);
     }
   } catch {
     // If the body isn't JSON, we still invalidated the product collection tag above.
@@ -54,6 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({
     ok: true,
+    slug,
     revalidatedAt: new Date().toISOString(),
   });
 }

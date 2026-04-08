@@ -60,10 +60,10 @@ function VerifyEmailContent() {
     }
 
     if (clinicState) {
-      return "Clinic application received. Verify your email to activate login, then track approval in your profile.";
+      return "Clinic application received. Verify your email to activate clinic login, then track approval in your profile.";
     }
 
-    return "Account created. Verify your email to activate login and checkout.";
+    return "Account created. Retail login is already available; email verification is still recommended for account security.";
   }, [clinicState, createdState]);
 
   async function handleResend(event: React.FormEvent<HTMLFormElement>): Promise<void> {
@@ -97,7 +97,7 @@ function VerifyEmailContent() {
         <div className="auth-visual">
           <div className="auth-visual-text">
             <h2>Verify your email.</h2>
-            <p>Secure account activation is required before first login.</p>
+            <p>Keep your account recoverable and secure with a verified email.</p>
           </div>
         </div>
 

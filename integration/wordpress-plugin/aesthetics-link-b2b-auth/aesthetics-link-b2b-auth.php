@@ -35,6 +35,7 @@ add_action('admin_menu', 'al_b2b_register_admin_menu');
 add_action('admin_init', 'al_b2b_handle_admin_actions');
 add_action('rest_api_init', 'al_b2b_register_routes');
 add_action(AL_B2B_CLEANUP_EVENT, 'al_b2b_cleanup_expired_sessions');
+add_action('template_redirect', 'al_b2b_maybe_handle_checkout_bridge', 1);
 
 function al_b2b_activate() {
 	al_b2b_ensure_roles();
@@ -180,6 +181,79 @@ function al_b2b_get_turnstile_secret() {
 	}
 
 	return '';
+}
+
+function al_b2b_get_checkout_bridge_secret() {
+	if (defined('AL_B2B_CHECKOUT_BRIDGE_SECRET') && AL_B2B_CHECKOUT_BRIDGE_SECRET) {
+		return trim((string) AL_B2B_CHECKOUT_BRIDGE_SECRET);
+	}
+
+	return '';
+}
+
+function al_b2b_base64url_encode($value) {
+	$encoded = base64_encode((string) $value);
+	$encoded = strtr($encoded, '+/', '-_');
+
+	return rtrim($encoded, '=');
+}
+
+function al_b2b_base64url_decode($value) {
+	$value = strtr((string) $value, '-_', '+/');
+	$padding = strlen($value) % 4;
+	if ($padding > 0) {
+		$value .= str_repeat('=', 4 - $padding);
+	}
+
+	$decoded = base64_decode($value, true);
+	if ($decoded === false) {
+		return null;
+	}
+
+	return $decoded;
+}
+
+function al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature) {
+	$encoded_payload = trim((string) $encoded_payload);
+	$signature = trim((string) $signature);
+	$secret = al_b2b_get_checkout_bridge_secret();
+
+	if (!$encoded_payload || !$signature || !$secret) {
+		return null;
+	}
+
+	$expected_signature = al_b2b_base64url_encode(
+		hash_hmac('sha256', $encoded_payload, $secret, true)
+	);
+
+	if (!hash_equals($expected_signature, $signature)) {
+		return null;
+	}
+
+	$json = al_b2b_base64url_decode($encoded_payload);
+	if (!$json) {
+		return null;
+	}
+
+	$payload = json_decode($json, true);
+	if (!is_array($payload)) {
+		return null;
+	}
+
+	$exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
+	$cart_token = isset($payload['cartToken']) ? trim((string) $payload['cartToken']) : '';
+
+	if ($exp <= 0 || $exp < time()) {
+		return null;
+	}
+
+	if (!$cart_token || strlen($cart_token) > 512) {
+		return null;
+	}
+
+	return array(
+		'cartToken' => $cart_token,
+	);
 }
 
 function al_b2b_assert_captcha($payload) {
@@ -517,6 +591,124 @@ function al_b2b_get_user_from_token($token) {
 	}
 
 	return $user;
+}
+
+function al_b2b_fetch_store_cart_by_token($cart_token) {
+	if (!function_exists('rest_get_server')) {
+		return null;
+	}
+
+	$request = new WP_REST_Request('GET', '/wc/store/v1/cart');
+	$request->set_header('Accept', 'application/json');
+	$request->set_header('Cart-Token', (string) $cart_token);
+	$response = rest_get_server()->dispatch($request);
+
+	if (is_wp_error($response)) {
+		return null;
+	}
+
+	$status = method_exists($response, 'get_status') ? (int) $response->get_status() : 500;
+	if ($status < 200 || $status >= 300) {
+		return null;
+	}
+
+	$data = method_exists($response, 'get_data') ? $response->get_data() : null;
+	return is_array($data) ? $data : null;
+}
+
+function al_b2b_sync_wc_cart_from_store_token($cart_token) {
+	if (!function_exists('WC') || !function_exists('wc_load_cart') || !function_exists('wc_get_product')) {
+		return false;
+	}
+
+	$store_cart = al_b2b_fetch_store_cart_by_token($cart_token);
+	if (!$store_cart || !isset($store_cart['items']) || !is_array($store_cart['items'])) {
+		return false;
+	}
+
+	wc_load_cart();
+	if (!WC()->session || !WC()->cart) {
+		return false;
+	}
+
+	WC()->session->set_customer_session_cookie(true);
+	WC()->cart->empty_cart();
+
+	foreach ($store_cart['items'] as $item) {
+		if (!is_array($item)) {
+			continue;
+		}
+
+		$raw_product_id = isset($item['id']) ? (int) $item['id'] : 0;
+		$quantity = isset($item['quantity']) ? max(1, (int) $item['quantity']) : 1;
+
+		if ($raw_product_id <= 0 || $quantity <= 0) {
+			continue;
+		}
+
+		$product = wc_get_product($raw_product_id);
+		if (!$product) {
+			continue;
+		}
+
+		$product_id = $raw_product_id;
+		$variation_id = 0;
+		$variation_data = array();
+
+		if ($product->is_type('variation')) {
+			$variation_id = $raw_product_id;
+			$product_id = (int) $product->get_parent_id();
+			if ($product_id <= 0) {
+				continue;
+			}
+			$variation_data = $product->get_variation_attributes();
+		}
+
+		WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation_data);
+	}
+
+	WC()->cart->calculate_totals();
+
+	if (method_exists(WC()->cart, 'set_session')) {
+		WC()->cart->set_session();
+	}
+
+	if (method_exists(WC()->session, 'save_data')) {
+		WC()->session->save_data();
+	}
+
+	if (function_exists('wc_setcookie')) {
+		$has_items = WC()->cart->get_cart_contents_count() > 0 ? '1' : '0';
+		wc_setcookie('woocommerce_items_in_cart', $has_items);
+		wc_setcookie('woocommerce_cart_hash', WC()->cart->get_cart_hash());
+	}
+
+	return true;
+}
+
+function al_b2b_maybe_handle_checkout_bridge() {
+	$encoded_payload = isset($_GET['al_b2b_checkout_bridge']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		? wp_unslash($_GET['al_b2b_checkout_bridge']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		: '';
+	$signature = isset($_GET['sig']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		? wp_unslash($_GET['sig']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		: '';
+
+	if (!$encoded_payload || !$signature) {
+		return;
+	}
+
+	$checkout_url = function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout');
+	$payload = al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature);
+
+	if (!$payload || !isset($payload['cartToken'])) {
+		wp_safe_redirect($checkout_url);
+		exit;
+	}
+
+	al_b2b_sync_wc_cart_from_store_token($payload['cartToken']);
+	wp_safe_redirect($checkout_url);
+	exit;
 }
 
 function al_b2b_is_wholesale_approved_user($user) {
@@ -885,6 +1077,8 @@ function al_b2b_register_routes() {
 }
 
 function al_b2b_register_user($request) {
+	al_b2b_ensure_roles();
+
 	$limit = al_b2b_guard_rate_limit('register', 8, HOUR_IN_SECONDS);
 	if (is_wp_error($limit)) {
 		return $limit;
@@ -930,7 +1124,8 @@ function al_b2b_register_user($request) {
 	}
 
 	$username = al_b2b_derive_username_from_email($email);
-	$role = $account_type === 'clinic' ? 'clinic_pending' : 'customer';
+	$retail_role = get_role('customer') ? 'customer' : 'subscriber';
+	$role = $account_type === 'clinic' ? 'clinic_pending' : $retail_role;
 
 	$user_id = wp_insert_user(array(
 		'user_login' => $username,
@@ -943,7 +1138,12 @@ function al_b2b_register_user($request) {
 	));
 
 	if (is_wp_error($user_id)) {
-		return new WP_Error('registration_failed', $user_id->get_error_message(), array('status' => 500));
+		$error_code = $user_id->get_error_code() ?: 'registration_failed';
+		$status = in_array($error_code, array('invalid_username', 'existing_user_login', 'existing_user_email', 'invalid_role'), true)
+			? 400
+			: 500;
+
+		return new WP_Error($error_code, $user_id->get_error_message(), array('status' => $status));
 	}
 
 	update_user_meta($user_id, AL_B2B_ACCOUNT_TYPE_META, $account_type);
@@ -959,7 +1159,7 @@ function al_b2b_register_user($request) {
 		'requiresApproval' => $account_type === 'clinic',
 		'requiresEmailVerification' => true,
 		'emailDeliveryAttempted' => $email_sent,
-		'message' => 'Account created. Please verify your email before logging in.',
+		'message' => 'Account created. Please check your inbox to verify your email.',
 	));
 }
 
@@ -987,10 +1187,13 @@ function al_b2b_login_user($request) {
 		return new WP_Error('invalid_credentials', 'Invalid email or password.', array('status' => 401));
 	}
 
-	if (!al_b2b_is_email_verified($user->ID)) {
+	$account_type = get_user_meta($user->ID, AL_B2B_ACCOUNT_TYPE_META, true);
+	$is_clinic_account = $account_type === 'clinic';
+
+	if ($is_clinic_account && !al_b2b_is_email_verified($user->ID)) {
 		return new WP_Error(
 			'email_not_verified',
-			'Please verify your email before signing in.',
+			'Please verify your email before signing in to your clinic account.',
 			array(
 				'status' => 403,
 				'needsVerification' => true,

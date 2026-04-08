@@ -76,12 +76,7 @@ export default function CartPage() {
   }
 
   function handleGoToCheckout(): void {
-    if (!CHECKOUT_URL) {
-      setError("Checkout URL is not configured. Set NEXT_PUBLIC_WOOCOMMERCE_CHECKOUT_URL.");
-      return;
-    }
-
-    window.location.assign(CHECKOUT_URL);
+    window.location.assign("/api/checkout/bridge");
   }
 
   return (
@@ -182,7 +177,7 @@ export default function CartPage() {
               type="button"
               className="checkout-btn"
               onClick={handleGoToCheckout}
-              disabled={cart.items.length === 0 || !CHECKOUT_URL}
+              disabled={cart.items.length === 0}
             >
               Proceed to Secure Checkout
             </button>
@@ -191,7 +186,7 @@ export default function CartPage() {
               Checkout is handled on your WooCommerce checkout subdomain.
             </p>
             <p style={{ fontSize: "0.75rem", color: "var(--color-gray2)", textAlign: "center", marginTop: "0.5rem" }}>
-              Destination: {CHECKOUT_URL || "Not configured"}
+              Destination: {CHECKOUT_URL || "Woo checkout (resolved by bridge)"}
             </p>
 
             {error ? (

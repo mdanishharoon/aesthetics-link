@@ -71,7 +71,8 @@ export default function Login() {
               }}
             >
               <p>
-                Email verification is required before first login. If your password is lost, use{" "}
+                Retail accounts can sign in right away. Clinic / B2B accounts must verify email before first login.
+                If your password is lost, use{" "}
                 <Link href="/forgot-password" className="auth-link">
                   reset password
                 </Link>
@@ -129,7 +130,7 @@ export default function Login() {
             {error ? <p style={{ marginTop: "1rem", color: "#b04545", fontSize: "0.85rem" }}>{error}</p> : null}
             {needsVerificationForEmail ? (
               <p style={{ marginTop: "0.55rem", color: "var(--color-gray2)", fontSize: "0.85rem" }}>
-                Verify your email first.{" "}
+                This account requires email verification first.{" "}
                 <Link href={`/verify-email?email=${encodeURIComponent(needsVerificationForEmail)}`} className="auth-link">
                   Resend verification email
                 </Link>

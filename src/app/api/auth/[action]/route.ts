@@ -89,12 +89,23 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
     headers.set("Content-Type", req.headers.get("content-type") ?? "application/json");
   }
 
-  const upstream = await fetch(upstreamUrl.toString(), {
-    method: req.method,
-    headers,
-    body,
-    cache: "no-store",
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(upstreamUrl.toString(), {
+      method: req.method,
+      headers,
+      body,
+      cache: "no-store",
+    });
+  } catch {
+    return NextResponse.json(
+      {
+        code: "upstream_unreachable",
+        message: "Unable to reach WooCommerce auth service.",
+      },
+      { status: 502 },
+    );
+  }
 
   const upstreamText = await upstream.text();
   let upstreamPayload: Record<string, unknown> = {};

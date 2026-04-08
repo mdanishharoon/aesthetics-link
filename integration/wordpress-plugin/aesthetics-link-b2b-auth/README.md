@@ -41,18 +41,28 @@ It creates database tables:
 
 1. Registration creates account with `al_email_verified=0`.
 2. Verification email links to frontend `/verify-email?token=...`.
-3. Login is blocked until verification succeeds.
+3. Clinic/B2B login is blocked until verification succeeds (retail can login immediately).
 4. Password reset links to frontend `/reset-password?token=...`.
+
+## Checkout bridge
+
+The plugin supports a signed checkout bridge query handled on `template_redirect`:
+
+- Query: `?al_b2b_checkout_bridge=<payload>&sig=<signature>`
+- Payload includes the Woo Store API cart token and expiry.
+- Valid requests hydrate Woo session cart, then redirect to native Woo checkout.
 
 ## Optional constants (wp-config.php)
 
 ```php
 define('AL_B2B_FRONTEND_URL', 'https://www.yourdomain.com');
 define('AL_B2B_TURNSTILE_SECRET', 'your-cloudflare-turnstile-secret');
+define('AL_B2B_CHECKOUT_BRIDGE_SECRET', 'same-value-as-WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET');
 ```
 
 - `AL_B2B_FRONTEND_URL` controls where verification/reset links point.
 - `AL_B2B_TURNSTILE_SECRET` enables CAPTCHA validation on auth endpoints.
+- `AL_B2B_CHECKOUT_BRIDGE_SECRET` must match frontend `WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET`.
 
 ## Notes
 
