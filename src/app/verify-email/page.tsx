@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import CaptchaField from "@/components/CaptchaField";
 import Header from "@/components/Header";
@@ -12,6 +12,14 @@ import { requestEmailVerification, verifyEmail } from "@/lib/auth/client";
 type VerifyState = "idle" | "verifying" | "verified" | "error";
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="auth-page shop-page" style={{ paddingTop: "8rem", textAlign: "center" }}>Loading...</div>}>
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [email, setEmail] = useState(searchParams.get("email") ?? "");

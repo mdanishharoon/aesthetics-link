@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -11,6 +11,14 @@ import { getMe, logout } from "@/lib/auth/client";
 import type { AuthUser } from "@/lib/auth/types";
 
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="auth-page shop-page" style={{ paddingTop: "8rem", textAlign: "center" }}>Loading...</div>}>
+      <ProfilePageContent />
+    </Suspense>
+  );
+}
+
+function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);

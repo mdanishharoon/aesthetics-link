@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
 import CaptchaField from "@/components/CaptchaField";
 import Header from "@/components/Header";
@@ -10,6 +10,14 @@ import MotionProvider from "@/components/MotionProvider";
 import { resetPassword } from "@/lib/auth/client";
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="auth-page shop-page" style={{ paddingTop: "8rem", textAlign: "center" }}>Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
