@@ -71,6 +71,9 @@ ul {
   --color-gray2: #737373;
   --color-gray3: #787878;
   --color-border: #d8d8d8;
+  /* Navbar wordmark vertical tweak (transparent bar = margin-top; mobile = top offset) */
+  --navbar-logo-nudge-y: 0.22rem;
+  --navbar-logo-mobile-nudge-y: 0.22rem;
   --bs-breakpoint-xs: 0;
   --bs-breakpoint-sm: 576px;
   --bs-breakpoint-md: 768px;
@@ -835,13 +838,19 @@ section {
   margin-top: 1.5rem;
 }
 
-.aesthetics-link-wordmark {
-  display: inline-block;
-  font-family: "Editorial New", serif;
-  font-style: italic;
-  font-weight: 300;
-  letter-spacing: -0.04em;
-  line-height: 0.92;
+/* AestheticsLink SVG wordmark (fill via currentColor on parent) */
+.aesthetics-link-logo {
+  color: inherit;
+  display: inline-flex;
+  line-height: 0;
+  align-items: center;
+}
+
+.aesthetics-link-logo__svg {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  width: 100%;
 }
 
 #intro .intro__wordmark {
@@ -852,10 +861,12 @@ section {
   z-index: 4;
 }
 
-#intro .intro__wordmark .aesthetics-link-wordmark {
+#intro .intro__wordmark .aesthetics-link-logo {
   color: #fff;
-  font-size: clamp(1.25rem, 2.5vw, 2rem);
-  line-height: 1;
+}
+
+#intro .intro__wordmark .aesthetics-link-logo__svg {
+  width: clamp(9.5rem, 32vw, 15.5rem);
 }
 
 #intro .intro__wordmark:hover {
@@ -2160,9 +2171,11 @@ section {
 #footer .footer__wordmark {
   color: #2f2f2f;
   display: block;
-  font-size: clamp(2rem, 4vw, 3.25rem);
-  line-height: 0.95;
   margin-bottom: 0.35rem;
+}
+
+#footer .footer__wordmark .aesthetics-link-logo__svg {
+  width: clamp(11rem, 42vw, 19rem);
 }
 
 #footer .footer__wordmark-link:hover .footer__wordmark {
@@ -2863,21 +2876,54 @@ h5,
 
 .navbar-logo__wordmark {
   color: #fff;
-  font-size: clamp(1rem, 1.8vw, 1.45rem);
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  line-height: 0;
   transition:
     color 0.35s ease,
     opacity 0.35s ease;
 }
 
+.navbar-logo__wordmark .aesthetics-link-logo__svg {
+  display: block;
+  flex-shrink: 0;
+  height: clamp(0.95rem, 1.65vw, 1.32rem);
+  width: auto;
+}
+
+/*
+  Vertical alignment: do NOT use transform on the SVG (easy to fight other rules).
+  `active` is set when menu is open OR when scrolled — only `scrolled` should use the larger mark.
+  Nudge with margin on the wordmark span so flex layout actually moves (tune --navbar-logo-nudge-y).
+*/
 #header.scrolled .navbar-logo__wordmark,
 #header.active .navbar-logo__wordmark {
   color: #2f2f2f;
 }
 
+@media (min-width: 768px) {
+  #header:not(.scrolled) .navbar-logo .navbar-logo__wordmark {
+    margin-top: var(--navbar-logo-nudge-y);
+  }
+
+  #header.scrolled .navbar-logo .navbar-logo__wordmark {
+    margin-top: 0;
+  }
+}
+
+/* Larger mark only after scroll (not when `active` is only from open menu) */
+#header.scrolled .navbar-logo__wordmark .aesthetics-link-logo__svg {
+  height: clamp(1.08rem, 1.95vw, 1.52rem);
+  width: auto;
+}
+
 @media (max-width: 767.98px) {
-  .navbar-logo__wordmark {
-    font-size: clamp(0.95rem, 4.2vw, 1.2rem);
+  .navbar-logo__wordmark .aesthetics-link-logo__svg {
+    height: clamp(0.88rem, 4vw, 1.18rem);
+  }
+
+  #header.scrolled .navbar-logo__wordmark .aesthetics-link-logo__svg {
+    height: clamp(1.02rem, 4.6vw, 1.38rem);
   }
 }
 
@@ -2967,6 +3013,11 @@ h5,
   color: #3b3b3b;
 }
 
+/* Wordmark SVG: inherit fill from .navbar-logo__wordmark color (beats legacy svg path rules) */
+#header .navbar-logo .aesthetics-link-logo__svg path {
+  fill: currentColor !important;
+}
+
 @media (max-width: 767.98px) {
   #header {
     font-size: 1rem;
@@ -2995,7 +3046,8 @@ h5,
     opacity: 1;
     pointer-events: auto;
     position: absolute;
-    top: 50%;
+    /* Tune vertical position here (changing transform Y fights centering; use top instead) */
+    top: calc(50% + var(--navbar-logo-mobile-nudge-y));
     transform: translate(-50%, -50%);
     width: max-content;
   }
@@ -3494,19 +3546,19 @@ h5,
 }
 
 .preloader__word {
-  display: block;
   color: #fff;
-  font-family: "Editorial New", serif;
-  font-size: 4rem;
-  font-style: italic;
-  font-weight: 300;
-  line-height: 0.92;
-  letter-spacing: -0.04em;
+  display: block;
+  line-height: 0;
+}
+
+.preloader__word .aesthetics-link-logo__svg {
+  height: auto;
+  width: clamp(10rem, 42vw, 17rem);
 }
 
 @media (max-width: 767.98px) {
-  .preloader__word {
-    font-size: 3rem;
+  .preloader__word .aesthetics-link-logo__svg {
+    width: clamp(8.5rem, 72vw, 14rem);
   }
 }
 
@@ -3601,10 +3653,11 @@ h5,
 
 .preloader--simple .preloader__word {
   color: #fff;
-  font-size: clamp(2rem, 4.5vw, 3.5rem);
-  font-style: italic;
-  letter-spacing: -0.05em;
-  line-height: 0.9;
+  line-height: 0;
+}
+
+.preloader--simple .preloader__word .aesthetics-link-logo__svg {
+  width: clamp(9rem, 40vw, 15.5rem);
 }
 
 .preloader--simple .loading {

@@ -101,7 +101,11 @@ export default function Footer() {
         </div>
 
         <div className="footer__copyright">
-          <Link href="/" className="footer__wordmark-link">
+          <Link
+            href="/"
+            className="footer__wordmark-link"
+            aria-label="AestheticsLink home"
+          >
             <AestheticsLinkWordmark className="footer__wordmark" />
           </Link>
           <p className="font-small">
