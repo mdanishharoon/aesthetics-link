@@ -872,32 +872,6 @@ export async function getStorefrontNavigation(): Promise<StorefrontNavigation> {
       brands = toCategoryChildrenLinks(categories, brandRootIds, "brand");
     }
 
-    if (concerns.length === 0) {
-      const excluded = new Set<number>([...concernRootIds, ...brandRootIds]);
-      for (const category of categories) {
-        if (excluded.has(category.id)) {
-          continue;
-        }
-
-        if (brandRootIds.has(category.parent)) {
-          continue;
-        }
-
-        if (hasChildren(categories, category.id) || !isPositiveOrUnknownCount(category.count)) {
-          continue;
-        }
-
-        if (categoryMatchesKeywords(category, ["brand"])) {
-          continue;
-        }
-
-        concerns.push({
-          label: category.name,
-          href: buildFilterHref("concern", category.slug),
-        });
-      }
-    }
-
     concerns = toUniqueLinks(concerns);
     if (brands.length === 0) {
       brands = categories
