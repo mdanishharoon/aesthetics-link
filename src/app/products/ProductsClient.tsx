@@ -283,11 +283,6 @@ function ShopCard({
           Choose variant on product page.
         </p>
       ) : null}
-      {isOutOfStock ? (
-        <p className="shop-product-card__stock-note" role="status" aria-live="polite">
-          {product.stockMessage || "This product is currently out of stock."}
-        </p>
-      ) : null}
       {!isOutOfStock && feedback ? (
         <p className="shop-product-card__feedback" role="status" aria-live="polite">
           {feedback}
