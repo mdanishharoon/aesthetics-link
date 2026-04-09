@@ -204,11 +204,7 @@ function ShopCard({
   };
 
   return (
-    <article
-      className="shop-product-card reveal-up"
-      data-reveal
-      style={{ "--card-accent": product.accentBg } as React.CSSProperties}
-    >
+    <article className="shop-product-card" style={{ "--card-accent": product.accentBg } as React.CSSProperties}>
       <Link href={`/products/${product.slug}`} className="shop-product-card__inner">
         <div className="shop-product-card__image-wrap">
           <div className="shop-product-card__image-overlay" />
