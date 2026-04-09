@@ -148,6 +148,12 @@ function getWooStockMessage(product: WooProduct): string | null {
     return "Out of stock";
   }
 
+  // Woo often returns generic CTA copy here (e.g. "Read more about ..."),
+  // which is confusing when we need an explicit stock state message.
+  if (/^read more\b/i.test(fromApi) || /^select options\b/i.test(fromApi)) {
+    return "Out of stock";
+  }
+
   return fromApi;
 }
 
