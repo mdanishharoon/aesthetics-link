@@ -729,6 +729,8 @@ async function fetchWooCategories(): Promise<WooCategory[] | null> {
   }
 
   const url = new URL("/wp-json/wc/store/v1/products/categories", baseUrl);
+  url.searchParams.set("per_page", "100");
+  url.searchParams.set("hide_empty", "false");
   const response = await fetch(url.toString(), {
     headers: {
       Accept: "application/json",
@@ -753,6 +755,8 @@ async function fetchWooBrands(): Promise<WooProductBrand[] | null> {
   }
 
   const url = new URL("/wp-json/wc/store/v1/products/brands", baseUrl);
+  url.searchParams.set("per_page", "100");
+  url.searchParams.set("hide_empty", "false");
   const response = await fetch(url.toString(), {
     headers: {
       Accept: "application/json",
