@@ -310,11 +310,57 @@ export default function ProductsClient({
   });
   const [cartBusy, setCartBusy] = useState(false);
 
+  const normalizeFilterSlug = (value: string | undefined): string => {
+    if (!value) {
+      return "";
+    }
+
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  const labelFromSlug = (slug: string): string => {
+    return slug
+      .split("-")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  };
+
+  const productCategoryIndex = useMemo(() => {
+    return products.map((product) => {
+      const primarySlug = normalizeFilterSlug(product.categorySlug);
+      const allSlugs = Array.from(
+        new Set(
+          [product.categorySlug, ...product.categorySlugs]
+            .map((slug) => normalizeFilterSlug(slug))
+            .filter(Boolean),
+        ),
+      );
+
+      return {
+        product,
+        primarySlug,
+        allSlugs,
+      };
+    });
+  }, [products]);
+
   const categories = useMemo(() => {
     const deduped = new Map<string, string>();
-    for (const product of products) {
-      if (!deduped.has(product.categorySlug)) {
-        deduped.set(product.categorySlug, product.category);
+
+    for (const entry of productCategoryIndex) {
+      if (entry.primarySlug && !deduped.has(entry.primarySlug)) {
+        deduped.set(entry.primarySlug, entry.product.category);
+      }
+
+      for (const slug of entry.allSlugs) {
+        if (!deduped.has(slug)) {
+          deduped.set(slug, labelFromSlug(slug));
+        }
       }
     }
 
@@ -322,7 +368,7 @@ export default function ProductsClient({
       { slug: "all", label: "All" },
       ...Array.from(deduped.entries()).map(([slug, label]) => ({ slug, label })),
     ];
-  }, [products]);
+  }, [productCategoryIndex]);
 
   useEffect(() => {
     void refreshCart();
@@ -433,13 +479,17 @@ export default function ProductsClient({
     }
   }, [categories, activeFilter]);
 
+  const normalizedActiveFilter = normalizeFilterSlug(activeFilter);
   const filtered =
-    activeFilter === "all"
+    normalizedActiveFilter === "all"
       ? products
-      : products.filter(
-          (product) =>
-            product.categorySlug === activeFilter || product.categorySlugs.includes(activeFilter),
-        );
+      : productCategoryIndex
+          .filter(
+            (entry) =>
+              entry.primarySlug === normalizedActiveFilter ||
+              entry.allSlugs.includes(normalizedActiveFilter),
+          )
+          .map((entry) => entry.product);
 
   async function refreshCart(): Promise<void> {
     const nextCart = await fetchCart();
