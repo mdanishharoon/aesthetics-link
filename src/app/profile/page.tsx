@@ -1,9 +1,10 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
@@ -12,6 +13,13 @@ import type { AuthAddress, AuthOrderSummary, AuthUser, BusinessInfo, UpdateProfi
 import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
 
 const ORDER_FETCH_LIMIT = 12;
+const EMPTY_ORDERS: AuthOrderSummary[] = [];
+
+type ProfileDashboardData = {
+  user: AuthUser;
+  orders: AuthOrderSummary[];
+  ordersError: string | null;
+};
 
 type SettingsFormState = {
   firstName: string;
@@ -72,6 +80,17 @@ function toPayloadAddress(address: AuthAddress): AuthAddress {
     ...address,
     name: "",
     lines: [],
+  };
+}
+
+function createEmptySettingsState(): SettingsFormState {
+  return {
+    firstName: "",
+    lastName: "",
+    displayName: "",
+    businessInfo: {},
+    billingAddress: emptyAddress(),
+    shippingAddress: emptyAddress(),
   };
 }
 
@@ -631,131 +650,96 @@ function OrdersSection({
 function ProfileDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [bootLoading, setBootLoading] = useState(true);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [orders, setOrders] = useState<AuthOrderSummary[]>([]);
+  const queryClient = useQueryClient();
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [selectedOrderDetail, setSelectedOrderDetail] = useState<StorefrontOrderConfirmation | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [logoutBusy, setLogoutBusy] = useState(false);
-  const [settingsBusy, setSettingsBusy] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
-  const [form, setForm] = useState<SettingsFormState>({
-    firstName: "",
-    lastName: "",
-    displayName: "",
-    businessInfo: {},
-    billingAddress: emptyAddress(),
-    shippingAddress: emptyAddress(),
-  });
+  const [form, setForm] = useState<SettingsFormState | null>(null);
   const state = searchParams.get("state");
 
-  const loadOrders = useCallback(async (): Promise<AuthOrderSummary[]> => {
-    setOrdersLoading(true);
-    setOrdersError(null);
-    try {
-      const ordersResponse = await getOrders(ORDER_FETCH_LIMIT);
-      const nextOrders = ordersResponse.orders ?? [];
-      setOrders(nextOrders);
-      return nextOrders;
-    } catch (ordersLoadError) {
-      setOrders([]);
-      setOrdersError(
-        ordersLoadError instanceof Error ? ordersLoadError.message : "Unable to load your order history.",
-      );
-      return [];
-    } finally {
-      setOrdersLoading(false);
-    }
-  }, []);
+  const dashboardQuery = useQuery<ProfileDashboardData>({
+    queryKey: ["auth", "dashboard", ORDER_FETCH_LIMIT],
+    queryFn: async () => {
+      const [meResult, ordersResult] = await Promise.allSettled([getMe(), getOrders(ORDER_FETCH_LIMIT)]);
 
-  const loadOrderDetail = useCallback(async (orderId: number) => {
-    setSelectedOrderId(orderId);
-    setDetailLoading(true);
-    setDetailError(null);
-
-    try {
-      const detail = await getOrderDetail(orderId);
-      setSelectedOrderDetail(detail);
-    } catch (orderError) {
-      setSelectedOrderDetail(null);
-      setDetailError(orderError instanceof Error ? orderError.message : "Unable to load order detail.");
-    } finally {
-      setDetailLoading(false);
-    }
-  }, []);
-
-  const loadProfile = useCallback(async () => {
-    setBootLoading(true);
-    setError(null);
-    setSettingsMessage(null);
-
-    try {
-      const me = await getMe();
-      setUser(me.user);
-      setForm(toSettingsState(me.user));
-
-      const nextOrders = await loadOrders();
-      if (nextOrders.length > 0) {
-        await loadOrderDetail(nextOrders[0].orderId);
-      } else {
-        setSelectedOrderId(null);
-        setSelectedOrderDetail(null);
-        setDetailError(null);
+      if (meResult.status === "rejected") {
+        throw meResult.reason;
       }
-    } catch (authError) {
-      setUser(null);
-      setOrders([]);
-      setSelectedOrderId(null);
-      setSelectedOrderDetail(null);
-      setError(authError instanceof Error ? authError.message : "Unable to load profile.");
-    } finally {
-      setBootLoading(false);
-    }
-  }, [loadOrderDetail, loadOrders]);
 
-  useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
+      return {
+        user: meResult.value.user,
+        orders: ordersResult.status === "fulfilled" ? ordersResult.value.orders ?? [] : [],
+        ordersError:
+          ordersResult.status === "rejected"
+            ? ordersResult.reason instanceof Error
+              ? ordersResult.reason.message
+              : "Unable to load your order history."
+            : null,
+      };
+    },
+  });
 
-  async function handleLogout(): Promise<void> {
-    if (logoutBusy) {
-      return;
-    }
+  const user = dashboardQuery.data?.user ?? null;
+  const orders = dashboardQuery.data?.orders ?? EMPTY_ORDERS;
+  const ordersError = dashboardQuery.data?.ordersError ?? null;
+  const effectiveSelectedOrderId =
+    selectedOrderId && orders.some((order) => order.orderId === selectedOrderId)
+      ? selectedOrderId
+      : orders[0]?.orderId ?? null;
+  const resolvedForm = form ?? (user ? toSettingsState(user) : createEmptySettingsState());
 
-    setLogoutBusy(true);
-    try {
-      await logout();
+  const detailQuery = useQuery<StorefrontOrderConfirmation>({
+    queryKey: ["auth", "order", effectiveSelectedOrderId],
+    queryFn: () => getOrderDetail(effectiveSelectedOrderId as number),
+    enabled: Boolean(user && effectiveSelectedOrderId),
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      queryClient.clear();
       router.push("/login");
       router.refresh();
-    } catch (logoutError) {
-      setError(logoutError instanceof Error ? logoutError.message : "Unable to log out.");
-    } finally {
-      setLogoutBusy(false);
-    }
-  }
+    },
+    onError: (logoutError) => {
+      setPageError(logoutError instanceof Error ? logoutError.message : "Unable to log out.");
+    },
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: updateProfile,
+    onSuccess: (response) => {
+      queryClient.setQueryData<ProfileDashboardData>(["auth", "dashboard", ORDER_FETCH_LIMIT], (current) =>
+        current
+          ? { ...current, user: response.user }
+          : { user: response.user, orders: [], ordersError: null },
+      );
+      setForm(toSettingsState(response.user));
+      setSettingsError(null);
+      setSettingsMessage(response.message ?? "Account settings updated.");
+    },
+    onError: (saveError) => {
+      setSettingsError(saveError instanceof Error ? saveError.message : "Unable to save account settings.");
+    },
+  });
 
   function updateFormField(field: keyof Pick<SettingsFormState, "firstName" | "lastName" | "displayName">, value: string) {
-    setForm((current) => ({ ...current, [field]: value }));
+    setForm((current) => ({ ...(current ?? resolvedForm), [field]: value }));
   }
 
   function updateBusinessField(field: keyof BusinessInfo, value: string) {
     setForm((current) => ({
-      ...current,
-      businessInfo: { ...current.businessInfo, [field]: value },
+      ...(current ?? resolvedForm),
+      businessInfo: { ...(current ?? resolvedForm).businessInfo, [field]: value },
     }));
   }
 
   function updateAddressField(type: "billingAddress" | "shippingAddress", field: keyof AuthAddress, value: string) {
     setForm((current) => ({
-      ...current,
+      ...(current ?? resolvedForm),
       [type]: {
-        ...current[type],
+        ...(current ?? resolvedForm)[type],
         [field]: value,
       },
     }));
@@ -763,58 +747,51 @@ function ProfileDashboard() {
 
   function copyBillingToShipping() {
     setForm((current) => ({
-      ...current,
+      ...(current ?? resolvedForm),
       shippingAddress: {
-        ...current.shippingAddress,
-        firstName: current.billingAddress.firstName,
-        lastName: current.billingAddress.lastName,
-        company: current.billingAddress.company,
-        phone: current.billingAddress.phone,
-        address1: current.billingAddress.address1,
-        address2: current.billingAddress.address2,
-        city: current.billingAddress.city,
-        state: current.billingAddress.state,
-        postcode: current.billingAddress.postcode,
-        country: current.billingAddress.country,
+        ...(current ?? resolvedForm).shippingAddress,
+        firstName: (current ?? resolvedForm).billingAddress.firstName,
+        lastName: (current ?? resolvedForm).billingAddress.lastName,
+        company: (current ?? resolvedForm).billingAddress.company,
+        phone: (current ?? resolvedForm).billingAddress.phone,
+        address1: (current ?? resolvedForm).billingAddress.address1,
+        address2: (current ?? resolvedForm).billingAddress.address2,
+        city: (current ?? resolvedForm).billingAddress.city,
+        state: (current ?? resolvedForm).billingAddress.state,
+        postcode: (current ?? resolvedForm).billingAddress.postcode,
+        country: (current ?? resolvedForm).billingAddress.country,
       },
     }));
   }
 
   async function handleSaveSettings(): Promise<void> {
-    if (!user || settingsBusy) {
+    if (!user || updateProfileMutation.isPending) {
       return;
     }
 
-    setSettingsBusy(true);
     setSettingsMessage(null);
     setSettingsError(null);
 
     const payload: UpdateProfilePayload = {
-      firstName: form.firstName,
-      lastName: form.lastName,
-      displayName: form.displayName,
-      billingAddress: toPayloadAddress(form.billingAddress),
-      shippingAddress: toPayloadAddress(form.shippingAddress),
-      ...(user.accountType === "clinic" ? { businessInfo: form.businessInfo } : {}),
+      firstName: resolvedForm.firstName,
+      lastName: resolvedForm.lastName,
+      displayName: resolvedForm.displayName,
+      billingAddress: toPayloadAddress(resolvedForm.billingAddress),
+      shippingAddress: toPayloadAddress(resolvedForm.shippingAddress),
+      ...(user.accountType === "clinic" ? { businessInfo: resolvedForm.businessInfo } : {}),
     };
 
-    try {
-      const response = await updateProfile(payload);
-      setUser(response.user);
-      setForm(toSettingsState(response.user));
-      setSettingsMessage(response.message ?? "Account settings updated.");
-    } catch (saveError) {
-      setSettingsError(saveError instanceof Error ? saveError.message : "Unable to save account settings.");
-    } finally {
-      setSettingsBusy(false);
-    }
+    await updateProfileMutation.mutateAsync(payload);
   }
 
+  const bootLoading = dashboardQuery.isPending;
+  const dashboardError =
+    dashboardQuery.error instanceof Error ? dashboardQuery.error.message : "Unable to load profile.";
   const dashboardTitle = user ? `${user.firstName || "Customer"} account dashboard` : "Account dashboard";
   const clinicMessage = user ? formatClinicMessage(user) : null;
   const memberLabel = user ? formatAccountLabel(user) : null;
   const totalOrdersLabel = useMemo(() => `${orders.length} recent order${orders.length === 1 ? "" : "s"}`, [orders]);
-  const selectedOrderSummary = orders.find((order) => order.orderId === selectedOrderId) ?? null;
+  const selectedOrderSummary = orders.find((order) => order.orderId === effectiveSelectedOrderId) ?? null;
 
   return (
     <div className="auth-page shop-page profile-page">
@@ -849,7 +826,11 @@ function ProfileDashboard() {
             <ProfileBanner>Business application received. Approval updates will appear in your account status.</ProfileBanner>
           ) : null}
 
-          {!bootLoading && !user ? <SignedOutState error={error} /> : null}
+          {!bootLoading && user && pageError ? (
+            <div className="profile-dashboard__banner profile-dashboard__banner--error">{pageError}</div>
+          ) : null}
+
+          {!bootLoading && !user ? <SignedOutState error={pageError ?? dashboardError} /> : null}
 
           {user ? (
             <div className="profile-dashboard__layout">
@@ -920,10 +901,10 @@ function ProfileDashboard() {
                     <button
                       type="button"
                       className="profile-dashboard__button profile-dashboard__button--secondary"
-                      onClick={() => void handleLogout()}
-                      disabled={logoutBusy}
+                      onClick={() => logoutMutation.mutate()}
+                      disabled={logoutMutation.isPending}
                     >
-                      {logoutBusy ? "Signing out..." : "Log out"}
+                      {logoutMutation.isPending ? "Signing out..." : "Log out"}
                     </button>
                   </div>
                 </section>
@@ -932,27 +913,27 @@ function ProfileDashboard() {
               <div className="profile-dashboard__content">
                 <OrdersSection
                   orders={orders}
-                  loading={ordersLoading}
+                  loading={dashboardQuery.isPending}
                   error={ordersError}
-                  selectedOrderId={selectedOrderId}
-                  onRetry={() => void loadOrders()}
-                  onSelectOrder={(orderId) => void loadOrderDetail(orderId)}
+                  selectedOrderId={effectiveSelectedOrderId}
+                  onRetry={() => void dashboardQuery.refetch()}
+                  onSelectOrder={(orderId) => setSelectedOrderId(orderId)}
                 />
 
-                {selectedOrderId ? (
+                {effectiveSelectedOrderId ? (
                   <OrderDetailPanel
-                    order={selectedOrderDetail}
+                    order={detailQuery.data ?? null}
                     summary={selectedOrderSummary}
-                    loading={detailLoading}
-                    error={detailError}
-                    onRetry={() => void loadOrderDetail(selectedOrderId)}
+                    loading={detailQuery.isPending}
+                    error={detailQuery.error instanceof Error ? detailQuery.error.message : null}
+                    onRetry={() => void detailQuery.refetch()}
                   />
                 ) : null}
 
                 <AccountSettingsSection
                   user={user}
-                  form={form}
-                  busy={settingsBusy}
+                  form={resolvedForm}
+                  busy={updateProfileMutation.isPending}
                   message={settingsMessage}
                   error={settingsError}
                   onFieldChange={updateFormField}
