@@ -5,7 +5,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
 import { useStorefrontNavigation } from "@/components/StorefrontNavigationProvider";
-import { getMe, getWholesalePrices } from "@/lib/auth/client";
+import { getWholesalePrices } from "@/lib/auth/client";
+import { useAuth } from "@/components/AuthProvider";
 import {
   addCartItem,
   fetchCart,
@@ -387,17 +388,13 @@ export default function ProductsClient({
     [initialProducts],
   );
 
-  const viewerQuery = useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: getMe,
-    retry: false,
-  });
+  const { user } = useAuth();
 
   const isWholesaleViewer = Boolean(
-    viewerQuery.data &&
-      viewerQuery.data.user.role === "wholesale_customer" &&
-      viewerQuery.data.user.clinicStatus === "approved" &&
-      viewerQuery.data.user.wholesaleApproved,
+    user &&
+      user.role === "wholesale_customer" &&
+      user.clinicStatus === "approved" &&
+      user.wholesaleApproved,
   );
 
   const wholesalePricesQuery = useQuery({

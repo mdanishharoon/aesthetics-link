@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
@@ -670,7 +670,10 @@ function ProfileDashboard() {
     selectedOrderId && orders.some((order) => order.orderId === selectedOrderId)
       ? selectedOrderId
       : orders[0]?.orderId ?? null;
-  const resolvedForm = form ?? (user ? toSettingsState(user) : createEmptySettingsState());
+  const resolvedForm = useMemo(
+    () => form ?? (user ? toSettingsState(user) : createEmptySettingsState()),
+    [form, user],
+  );
 
   const detailQuery = useQuery<StorefrontOrderConfirmation>({
     queryKey: ["auth", "order", effectiveSelectedOrderId],
@@ -703,6 +706,8 @@ function ProfileDashboard() {
           ? { ...current, user: response.user }
           : { user: response.user, orders: [], total: 0, initialOrderDetail: null },
       );
+      // Keep the global AuthProvider cache in sync so Header reflects changes immediately.
+      queryClient.setQueryData<AuthUser | null>(["auth", "me"], response.user);
       setForm(toSettingsState(response.user));
       setSettingsError(null);
       setSettingsMessage(response.message ?? "Account settings updated.");
@@ -733,24 +738,17 @@ function ProfileDashboard() {
     }));
   }
 
-  function copyBillingToShipping() {
-    setForm((current) => ({
-      ...(current ?? resolvedForm),
-      shippingAddress: {
-        ...(current ?? resolvedForm).shippingAddress,
-        firstName: (current ?? resolvedForm).billingAddress.firstName,
-        lastName: (current ?? resolvedForm).billingAddress.lastName,
-        company: (current ?? resolvedForm).billingAddress.company,
-        phone: (current ?? resolvedForm).billingAddress.phone,
-        address1: (current ?? resolvedForm).billingAddress.address1,
-        address2: (current ?? resolvedForm).billingAddress.address2,
-        city: (current ?? resolvedForm).billingAddress.city,
-        state: (current ?? resolvedForm).billingAddress.state,
-        postcode: (current ?? resolvedForm).billingAddress.postcode,
-        country: (current ?? resolvedForm).billingAddress.country,
-      },
-    }));
-  }
+  const copyBillingToShipping = useCallback(() => {
+    setForm((current) => {
+      const base = current ?? resolvedForm;
+      const { firstName, lastName, company, phone, address1, address2, city, state, postcode, country } =
+        base.billingAddress;
+      return {
+        ...base,
+        shippingAddress: { ...base.shippingAddress, firstName, lastName, company, phone, address1, address2, city, state, postcode, country },
+      };
+    });
+  }, [resolvedForm]);
 
   async function handleSaveSettings(): Promise<void> {
     if (!user || updateProfileMutation.isPending) {

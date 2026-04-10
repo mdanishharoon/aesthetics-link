@@ -6,7 +6,8 @@ import { useParallax } from "@/hooks/useParallax";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
-import { getMe, getWholesalePrices } from "@/lib/auth/client";
+import { getWholesalePrices } from "@/lib/auth/client";
+import { useAuth } from "@/components/AuthProvider";
 import { addCartItem, addVariableCartItem } from "@/lib/storefront/client";
 import type {
   StorefrontDetailProduct,
@@ -119,17 +120,13 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
   const isOutOfStock = product.inStock === false || product.stockStatus === "outofstock";
   const stockMessage = product.stockMessage || "This product is currently out of stock and unavailable.";
 
-  const viewerQuery = useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: getMe,
-    retry: false,
-  });
+  const { user } = useAuth();
 
   const isWholesaleViewer = Boolean(
-    viewerQuery.data &&
-      viewerQuery.data.user.role === "wholesale_customer" &&
-      viewerQuery.data.user.clinicStatus === "approved" &&
-      viewerQuery.data.user.wholesaleApproved,
+    user &&
+      user.role === "wholesale_customer" &&
+      user.clinicStatus === "approved" &&
+      user.wholesaleApproved,
   );
 
   const wholesalePricesQuery = useQuery({

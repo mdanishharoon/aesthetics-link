@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -40,58 +41,50 @@ export default function SignUp() {
   const router = useRouter();
   const [accountType, setAccountType] = useState<AccountType>("retail");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (loading) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await register({
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        password: form.password,
-        accountType,
-        businessInfo:
-          accountType === "clinic"
-            ? {
-                clinicName: form.clinicName,
-                businessName: form.businessName,
-                licenseNumber: form.licenseNumber,
-                taxId: form.taxId,
-                website: form.website,
-                phone: form.phone,
-              }
-            : undefined,
-        captchaToken: captchaToken ?? undefined,
-      });
-      const query = new URLSearchParams({
-        email: form.email,
-        state: "created",
-      });
+  const registerMutation = useMutation({
+    mutationFn: register,
+    onSuccess: (response) => {
+      const query = new URLSearchParams({ email: form.email, state: "created" });
       if (response.requiresApproval) {
         query.set("clinic", "1");
       }
       router.push(`/verify-email?${query.toString()}`);
       router.refresh();
-    } catch (authError) {
-      setError(authError instanceof Error ? authError.message : "Unable to create account.");
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (registerMutation.isPending) return;
+    registerMutation.mutate({
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      password: form.password,
+      accountType,
+      businessInfo:
+        accountType === "clinic"
+          ? {
+              clinicName: form.clinicName,
+              businessName: form.businessName,
+              licenseNumber: form.licenseNumber,
+              taxId: form.taxId,
+              website: form.website,
+              phone: form.phone,
+            }
+          : undefined,
+      captchaToken: captchaToken ?? undefined,
+    });
   }
+
+  const loading = registerMutation.isPending;
+  const error = registerMutation.error instanceof Error ? registerMutation.error.message : null;
 
   return (
     <div className="auth-page shop-page">

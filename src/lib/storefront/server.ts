@@ -10,6 +10,13 @@ import type {
 } from "@/lib/graphql/types";
 import { getProductBySlug, products as fallbackProducts, type Product } from "@/data/products";
 import { getWooStoreBaseUrl } from "@/lib/storefront/config";
+import { decodeEntities } from "@/lib/utils/text";
+import {
+  ACCENT_COLORS,
+  DEFAULT_NAV_TOP,
+  DEFAULT_NAV_CONCERNS,
+  DEFAULT_NAV_BRANDS,
+} from "@/lib/storefront/constants";
 import type {
   StorefrontCatalogProduct,
   StorefrontDetailProduct,
@@ -45,46 +52,7 @@ type WooStoreProduct = {
   brands: WooProductBrand[];
 };
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const ACCENT_COLORS = ["#F1CCCF", "#D8D0C4", "#D3E5EF", "#E8DFC8"];
-const DEFAULT_NAV_TOP = [
-  { label: "All Products", href: "/products" },
-  { label: "Bestsellers", href: "/products?sort=bestsellers" },
-  { label: "New Arrivals", href: "/products?sort=new" },
-];
-const DEFAULT_NAV_CONCERNS = [
-  { label: "Brightening", href: "/products?concern=brightening-moisturiser" },
-  { label: "Hydration", href: "/products?concern=hydration-serum" },
-  { label: "Anti-Ageing", href: "/products?concern=overnight-treatment" },
-  { label: "SPF Protection", href: "/products?concern=uv-protection" },
-  { label: "Eye Care", href: "/products?concern=eye-treatment" },
-  { label: "Targeted Treatment", href: "/products?concern=targeted-treatment" },
-];
-const DEFAULT_NAV_BRANDS = [
-  { label: "Lumiere Atelier", href: "/products?brand=lumiere-atelier" },
-  { label: "Botan Botanics", href: "/products?brand=botan-botanics" },
-  { label: "Clinis Lab", href: "/products?brand=clinis-lab" },
-  { label: "Velour Skin", href: "/products?brand=velour-skin" },
-  { label: "Verdant", href: "/products?brand=verdant" },
-  { label: "Eclat London", href: "/products?brand=eclat-london" },
-];
-
 // ── Shared utilities ───────────────────────────────────────────────────────
-
-function decodeEntities(value: string): string {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&pound;/g, "£")
-    .replace(/&dollar;/g, "$")
-    .replace(/&euro;/g, "€");
-}
 
 function asRecord(value: unknown): UnknownRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -695,11 +663,7 @@ function toCategoryDescendantLinks(
 }
 
 function defaultNavigation(): StorefrontNavigation {
-  return {
-    top: DEFAULT_NAV_TOP,
-    concerns: DEFAULT_NAV_CONCERNS,
-    brands: DEFAULT_NAV_BRANDS,
-  };
+  return { top: DEFAULT_NAV_TOP, concerns: DEFAULT_NAV_CONCERNS, brands: DEFAULT_NAV_BRANDS };
 }
 
 async function fetchWooCategories(): Promise<WooCategory[] | null> {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -8,39 +9,39 @@ import CaptchaField from "@/components/CaptchaField";
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
 import { AuthApiError, login } from "@/lib/auth/client";
+import type { AuthUser } from "@/lib/auth/types";
 
 export default function Login() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [needsVerificationForEmail, setNeedsVerificationForEmail] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (loading) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setNeedsVerificationForEmail(null);
-
-    try {
-      await login({ email, password, captchaToken: captchaToken ?? undefined });
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: (response) => {
+      queryClient.setQueryData<AuthUser | null>(["auth", "me"], response.user);
       router.push("/profile");
       router.refresh();
-    } catch (authError) {
-      if (authError instanceof AuthApiError && authError.code === "email_not_verified") {
+    },
+    onError: (error) => {
+      if (error instanceof AuthApiError && error.code === "email_not_verified") {
         setNeedsVerificationForEmail(email);
       }
-      setError(authError instanceof Error ? authError.message : "Unable to sign in.");
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (loginMutation.isPending) return;
+    setNeedsVerificationForEmail(null);
+    loginMutation.mutate({ email, password, captchaToken: captchaToken ?? undefined });
   }
+
+  const loading = loginMutation.isPending;
+  const error = loginMutation.error instanceof Error ? loginMutation.error.message : null;
 
   return (
     <div className="auth-page shop-page">

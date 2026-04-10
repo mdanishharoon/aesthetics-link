@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import LenisProvider from "@/components/LenisProvider";
 import QueryProvider from "@/components/QueryProvider";
 import StorefrontNavigationProvider from "@/components/StorefrontNavigationProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 import { getStorefrontNavigation } from "@/lib/storefront/server";
 import './globals.css';
 
@@ -23,8 +24,10 @@ export default async function RootLayout({
       <body>
         <StorefrontNavigationProvider navigation={navigation}>
           <QueryProvider>
-            <LenisProvider />
-            {children}
+            <AuthProvider>
+              <LenisProvider />
+              {children}
+            </AuthProvider>
           </QueryProvider>
         </StorefrontNavigationProvider>
       </body>

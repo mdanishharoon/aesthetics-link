@@ -2,33 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AestheticsLinkWordmark from "@/components/AestheticsLinkWordmark";
+import { useAuth } from "@/components/AuthProvider";
 import { useStorefrontNavigation } from "@/components/StorefrontNavigationProvider";
-import type { StorefrontNavigation } from "@/lib/storefront/types";
-
-const DEFAULT_NAVIGATION: StorefrontNavigation = {
-  top: [
-    { label: "All Products", href: "/products" },
-    { label: "Bestsellers", href: "/products?sort=bestsellers" },
-    { label: "New Arrivals", href: "/products?sort=new" },
-  ],
-  concerns: [
-    { label: "Brightening", href: "/products?concern=brightening-moisturiser" },
-    { label: "Hydration", href: "/products?concern=hydration-serum" },
-    { label: "Anti-Ageing", href: "/products?concern=overnight-treatment" },
-    { label: "SPF Protection", href: "/products?concern=uv-protection" },
-    { label: "Eye Care", href: "/products?concern=eye-treatment" },
-    { label: "Targeted Treatment", href: "/products?concern=targeted-treatment" },
-  ],
-  brands: [
-    { label: "Lumiere Atelier", href: "/products?brand=lumiere-atelier" },
-    { label: "Botan Botanics", href: "/products?brand=botan-botanics" },
-    { label: "Clinis Lab", href: "/products?brand=clinis-lab" },
-    { label: "Velour Skin", href: "/products?brand=velour-skin" },
-    { label: "Verdant", href: "/products?brand=verdant" },
-    { label: "Eclat London", href: "/products?brand=eclat-london" },
-  ],
-};
+import { DEFAULT_NAVIGATION } from "@/lib/storefront/constants";
+import { fetchCart, getCachedCartSnapshot } from "@/lib/storefront/client";
+import type { StorefrontCart } from "@/lib/storefront/types";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,6 +18,16 @@ export default function Header() {
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const navigation = useStorefrontNavigation() ?? DEFAULT_NAVIGATION;
   const dropdownTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { user } = useAuth();
+
+  const [initialCachedCart] = useState<StorefrontCart | null>(() => getCachedCartSnapshot());
+  const { data: cart } = useQuery<StorefrontCart>({
+    queryKey: ["storefront", "cart"],
+    queryFn: fetchCart,
+    enabled: false,
+    initialData: initialCachedCart ?? undefined,
+  });
+  const cartCount = cart?.itemCount ?? 0;
 
   useEffect(() => {
     let lastY = 0;
@@ -274,7 +264,7 @@ export default function Header() {
                   href="/cart"
                   id="cart-nav"
                   className="navbar-menu-list-item-link"
-                  aria-label="Cart"
+                  aria-label={cartCount > 0 ? `Cart (${cartCount})` : "Cart"}
                   style={{
                     background: "none",
                     border: "none",
@@ -283,6 +273,7 @@ export default function Header() {
                     display: "inline-flex",
                     alignItems: "center",
                     color: "inherit",
+                    position: "relative",
                   }}
                 >
                   <svg
@@ -305,6 +296,29 @@ export default function Header() {
                       strokeLinecap="round"
                     />
                   </svg>
+                  {cartCount > 0 ? (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "-6px",
+                        right: "-8px",
+                        minWidth: "16px",
+                        height: "16px",
+                        borderRadius: "8px",
+                        background: "var(--color-text, #111)",
+                        color: "var(--color-bg, #fff)",
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        lineHeight: "16px",
+                        textAlign: "center",
+                        padding: "0 3px",
+                        pointerEvents: "none",
+                      }}
+                      aria-hidden="true"
+                    >
+                      {cartCount}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
               <div className="border-vertical d-none d-md-block" />
@@ -312,7 +326,8 @@ export default function Header() {
                 <Link
                   href="/profile"
                   className="navbar-menu-list-item-link"
-                  aria-label="Login"
+                  aria-label={user ? "My account" : "Sign in"}
+                  style={{ position: "relative" }}
                 >
                   <svg
                     className="icon-account"
@@ -337,6 +352,22 @@ export default function Header() {
                       strokeLinejoin="round"
                     />
                   </svg>
+                  {user ? (
+                    <span
+                      style={{
+                        position: "absolute",
+                        bottom: "-2px",
+                        right: "-4px",
+                        width: "7px",
+                        height: "7px",
+                        borderRadius: "50%",
+                        background: "#4caf50",
+                        border: "1.5px solid var(--color-bg, #fff)",
+                        pointerEvents: "none",
+                      }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
                 </Link>
               </li>
             </ul>

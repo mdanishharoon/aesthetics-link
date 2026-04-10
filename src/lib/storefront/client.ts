@@ -2,12 +2,12 @@
 
 import type {
   StorefrontCart,
-  StorefrontCheckoutPayload,
-  StorefrontCheckoutResponse,
   StorefrontOrderLookupResult,
 } from "@/lib/storefront/types";
+import { decodeEntities } from "@/lib/utils/text";
+import { ACCENT_COLORS } from "@/lib/storefront/constants";
 
-// ── Raw Store API types ────────────────────────────────────────────────────
+// ── Raw Store API types ─────────────────────────────────────────────────────
 
 type RawPrice = {
   currency_symbol?: string;
@@ -51,22 +51,7 @@ type RawCart = {
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
-const ACCENT_COLORS = ["#F1CCCF", "#D8D0C4", "#D3E5EF", "#E8DFC8"];
 const CART_CACHE_KEY = "al_storefront_cart_snapshot_v1";
-
-function decodeEntities(value: string): string {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&pound;/g, "£")
-    .replace(/&dollar;/g, "$")
-    .replace(/&euro;/g, "€");
-}
 
 function formatMoney(rawValue: string | undefined, money: Partial<RawPrice & RawTotals>): string {
   const minorUnits = Number.isFinite(money.currency_minor_unit)
@@ -430,23 +415,3 @@ export async function lookupGuestOrder(orderNumber: string, email: string): Prom
   return payload as StorefrontOrderLookupResult;
 }
 
-export async function submitCheckout(
-  payload: StorefrontCheckoutPayload,
-): Promise<StorefrontCheckoutResponse> {
-  const raw = await requestStoreApi<Record<string, unknown>>("/checkout", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-  const paymentResult = (raw.payment_result ?? {}) as Record<string, unknown>;
-  const redirectUrl = (paymentResult.redirect_url ?? raw.redirect_url) as string | undefined;
-  const status = (paymentResult.payment_status ?? raw.status ?? "success") as string;
-  const orderId = (raw.order_id ?? raw.id) as number | undefined;
-
-  return {
-    status,
-    redirectUrl,
-    orderId,
-    raw,
-  };
-}
