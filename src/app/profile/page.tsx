@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
@@ -324,89 +324,6 @@ function OrderDetailPanel({
   );
 }
 
-function AddressForm({
-  title,
-  address,
-  includeEmail,
-  onChange,
-  onCopyFromBilling,
-}: {
-  title: string;
-  address: AuthAddress;
-  includeEmail?: boolean;
-  onChange: (field: keyof AuthAddress, value: string) => void;
-  onCopyFromBilling?: () => void;
-}) {
-  return (
-    <section className="profile-settings__panel">
-      <div className="profile-settings__panel-head">
-        <div>
-          <div className="profile-dashboard__eyebrow">{title}</div>
-          <h3 className="profile-dashboard__section-title">{title}</h3>
-        </div>
-        {onCopyFromBilling ? (
-          <button
-            type="button"
-            className="profile-dashboard__button profile-dashboard__button--secondary"
-            onClick={onCopyFromBilling}
-          >
-            Copy billing
-          </button>
-        ) : null}
-      </div>
-
-      <div className="profile-settings__fields">
-        <label className="profile-settings__field">
-          <span>First name</span>
-          <input value={address.firstName} onChange={(event) => onChange("firstName", event.target.value)} />
-        </label>
-        <label className="profile-settings__field">
-          <span>Last name</span>
-          <input value={address.lastName} onChange={(event) => onChange("lastName", event.target.value)} />
-        </label>
-        <label className="profile-settings__field">
-          <span>Company</span>
-          <input value={address.company} onChange={(event) => onChange("company", event.target.value)} />
-        </label>
-        <label className="profile-settings__field">
-          <span>Phone</span>
-          <input value={address.phone} onChange={(event) => onChange("phone", event.target.value)} />
-        </label>
-        {includeEmail ? (
-          <label className="profile-settings__field profile-settings__field--wide">
-            <span>Billing email</span>
-            <input type="email" value={address.email} onChange={(event) => onChange("email", event.target.value)} />
-          </label>
-        ) : null}
-        <label className="profile-settings__field profile-settings__field--wide">
-          <span>Address line 1</span>
-          <input value={address.address1} onChange={(event) => onChange("address1", event.target.value)} />
-        </label>
-        <label className="profile-settings__field profile-settings__field--wide">
-          <span>Address line 2</span>
-          <input value={address.address2} onChange={(event) => onChange("address2", event.target.value)} />
-        </label>
-        <label className="profile-settings__field">
-          <span>City</span>
-          <input value={address.city} onChange={(event) => onChange("city", event.target.value)} />
-        </label>
-        <label className="profile-settings__field">
-          <span>State / county</span>
-          <input value={address.state} onChange={(event) => onChange("state", event.target.value)} />
-        </label>
-        <label className="profile-settings__field">
-          <span>Postcode</span>
-          <input value={address.postcode} onChange={(event) => onChange("postcode", event.target.value)} />
-        </label>
-        <label className="profile-settings__field">
-          <span>Country code</span>
-          <input value={address.country} onChange={(event) => onChange("country", event.target.value.toUpperCase())} />
-        </label>
-      </div>
-    </section>
-  );
-}
-
 function AccountSettingsSection({
   user,
   form,
@@ -415,8 +332,6 @@ function AccountSettingsSection({
   error,
   onFieldChange,
   onBusinessFieldChange,
-  onAddressChange,
-  onCopyBillingToShipping,
   onSubmit,
 }: {
   user: AuthUser;
@@ -426,8 +341,6 @@ function AccountSettingsSection({
   error: string | null;
   onFieldChange: (field: keyof Pick<SettingsFormState, "firstName" | "lastName" | "displayName">, value: string) => void;
   onBusinessFieldChange: (field: keyof BusinessInfo, value: string) => void;
-  onAddressChange: (type: "billingAddress" | "shippingAddress", field: keyof AuthAddress, value: string) => void;
-  onCopyBillingToShipping: () => void;
   onSubmit: () => void;
 }) {
   return (
@@ -435,105 +348,84 @@ function AccountSettingsSection({
       <div className="profile-settings__header">
         <div>
           <div className="profile-dashboard__eyebrow">Account settings</div>
-          <h2 className="profile-dashboard__section-title">Billing, delivery, and account details</h2>
+          <h2 className="profile-dashboard__section-title">Name and contact details</h2>
         </div>
         <button type="button" className="profile-dashboard__button" onClick={onSubmit} disabled={busy}>
-          {busy ? "Saving..." : "Save settings"}
+          {busy ? "Saving..." : "Save"}
         </button>
       </div>
 
       {message ? <div className="profile-dashboard__banner">{message}</div> : null}
       {error ? <div className="profile-dashboard__banner profile-dashboard__banner--error">{error}</div> : null}
 
-      <div className="profile-settings__grid">
-        <section className="profile-settings__panel">
-          <div className="profile-dashboard__eyebrow">Account details</div>
-          <h3 className="profile-dashboard__section-title">Customer profile</h3>
+      <div className="profile-settings__fields profile-settings__fields--flat">
+        <label className="profile-settings__field">
+          <span>First name</span>
+          <input value={form.firstName} onChange={(event) => onFieldChange("firstName", event.target.value)} />
+        </label>
+        <label className="profile-settings__field">
+          <span>Last name</span>
+          <input value={form.lastName} onChange={(event) => onFieldChange("lastName", event.target.value)} />
+        </label>
+        <label className="profile-settings__field profile-settings__field--wide">
+          <span>Display name</span>
+          <input value={form.displayName} onChange={(event) => onFieldChange("displayName", event.target.value)} />
+        </label>
+        <label className="profile-settings__field profile-settings__field--wide">
+          <span>Account email</span>
+          <input value={user.email} disabled readOnly />
+        </label>
+      </div>
 
-          <div className="profile-settings__fields">
+      {user.accountType === "clinic" ? (
+        <div className="profile-settings__business">
+          <div className="profile-dashboard__eyebrow">Business information</div>
+          <div className="profile-settings__fields profile-settings__fields--flat">
             <label className="profile-settings__field">
-              <span>First name</span>
-              <input value={form.firstName} onChange={(event) => onFieldChange("firstName", event.target.value)} />
+              <span>Clinic name</span>
+              <input
+                value={form.businessInfo.clinicName ?? ""}
+                onChange={(event) => onBusinessFieldChange("clinicName", event.target.value)}
+              />
             </label>
             <label className="profile-settings__field">
-              <span>Last name</span>
-              <input value={form.lastName} onChange={(event) => onFieldChange("lastName", event.target.value)} />
+              <span>Business name</span>
+              <input
+                value={form.businessInfo.businessName ?? ""}
+                onChange={(event) => onBusinessFieldChange("businessName", event.target.value)}
+              />
             </label>
-            <label className="profile-settings__field profile-settings__field--wide">
-              <span>Display name</span>
-              <input value={form.displayName} onChange={(event) => onFieldChange("displayName", event.target.value)} />
+            <label className="profile-settings__field">
+              <span>Business phone</span>
+              <input
+                value={form.businessInfo.phone ?? ""}
+                onChange={(event) => onBusinessFieldChange("phone", event.target.value)}
+              />
             </label>
-            <label className="profile-settings__field profile-settings__field--wide">
-              <span>Account email</span>
-              <input value={user.email} disabled readOnly />
+            <label className="profile-settings__field">
+              <span>Website</span>
+              <input
+                value={form.businessInfo.website ?? ""}
+                onChange={(event) => onBusinessFieldChange("website", event.target.value)}
+              />
+            </label>
+            <label className="profile-settings__field">
+              <span>License number</span>
+              <input
+                value={form.businessInfo.licenseNumber ?? ""}
+                onChange={(event) => onBusinessFieldChange("licenseNumber", event.target.value)}
+              />
+            </label>
+            <label className="profile-settings__field">
+              <span>Tax ID</span>
+              <input
+                value={form.businessInfo.taxId ?? ""}
+                onChange={(event) => onBusinessFieldChange("taxId", event.target.value)}
+              />
             </label>
           </div>
-
-          {user.accountType === "clinic" ? (
-            <div className="profile-settings__business">
-              <div className="profile-dashboard__eyebrow">Business information</div>
-              <div className="profile-settings__fields">
-                <label className="profile-settings__field">
-                  <span>Clinic name</span>
-                  <input
-                    value={form.businessInfo.clinicName ?? ""}
-                    onChange={(event) => onBusinessFieldChange("clinicName", event.target.value)}
-                  />
-                </label>
-                <label className="profile-settings__field">
-                  <span>Business name</span>
-                  <input
-                    value={form.businessInfo.businessName ?? ""}
-                    onChange={(event) => onBusinessFieldChange("businessName", event.target.value)}
-                  />
-                </label>
-                <label className="profile-settings__field">
-                  <span>Business phone</span>
-                  <input
-                    value={form.businessInfo.phone ?? ""}
-                    onChange={(event) => onBusinessFieldChange("phone", event.target.value)}
-                  />
-                </label>
-                <label className="profile-settings__field">
-                  <span>Website</span>
-                  <input
-                    value={form.businessInfo.website ?? ""}
-                    onChange={(event) => onBusinessFieldChange("website", event.target.value)}
-                  />
-                </label>
-                <label className="profile-settings__field">
-                  <span>License number</span>
-                  <input
-                    value={form.businessInfo.licenseNumber ?? ""}
-                    onChange={(event) => onBusinessFieldChange("licenseNumber", event.target.value)}
-                  />
-                </label>
-                <label className="profile-settings__field">
-                  <span>Tax ID</span>
-                  <input
-                    value={form.businessInfo.taxId ?? ""}
-                    onChange={(event) => onBusinessFieldChange("taxId", event.target.value)}
-                  />
-                </label>
-              </div>
-            </div>
-          ) : null}
-        </section>
-
-        <AddressForm
-          title="Billing address"
-          address={form.billingAddress}
-          includeEmail
-          onChange={(field, value) => onAddressChange("billingAddress", field, value)}
-        />
-
-        <AddressForm
-          title="Delivery address"
-          address={form.shippingAddress}
-          onChange={(field, value) => onAddressChange("shippingAddress", field, value)}
-          onCopyFromBilling={onCopyBillingToShipping}
-        />
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -728,28 +620,6 @@ function ProfileDashboard() {
     }));
   }
 
-  function updateAddressField(type: "billingAddress" | "shippingAddress", field: keyof AuthAddress, value: string) {
-    setForm((current) => ({
-      ...(current ?? resolvedForm),
-      [type]: {
-        ...(current ?? resolvedForm)[type],
-        [field]: value,
-      },
-    }));
-  }
-
-  const copyBillingToShipping = useCallback(() => {
-    setForm((current) => {
-      const base = current ?? resolvedForm;
-      const { firstName, lastName, company, phone, address1, address2, city, state, postcode, country } =
-        base.billingAddress;
-      return {
-        ...base,
-        shippingAddress: { ...base.shippingAddress, firstName, lastName, company, phone, address1, address2, city, state, postcode, country },
-      };
-    });
-  }, [resolvedForm]);
-
   async function handleSaveSettings(): Promise<void> {
     if (!user || updateProfileMutation.isPending) {
       return;
@@ -773,10 +643,8 @@ function ProfileDashboard() {
   const bootLoading = dashboardQuery.isPending;
   const dashboardError =
     dashboardQuery.error instanceof Error ? dashboardQuery.error.message : "Unable to load profile.";
-  const dashboardTitle = user ? `${user.firstName || "Customer"} account dashboard` : "Account dashboard";
   const clinicMessage = user ? formatClinicMessage(user) : null;
   const memberLabel = user ? formatAccountLabel(user) : null;
-  const totalOrdersLabel = useMemo(() => `${orders.length} recent order${orders.length === 1 ? "" : "s"}`, [orders]);
   const selectedOrderSummary = orders.find((order) => order.orderId === effectiveSelectedOrderId) ?? null;
 
   return (
@@ -786,22 +654,6 @@ function ProfileDashboard() {
 
       <main className="container profile-main">
         <div className="profile-dashboard">
-          <header className="profile-dashboard__hero">
-            <div className="profile-dashboard__hero-copy">
-              <p className="profile-dashboard__eyebrow">Account</p>
-              <h1 className="profile-dashboard__title">{dashboardTitle}</h1>
-              <p className="profile-dashboard__subtitle">
-                Review account details, track recent orders, inspect delivery information, and reopen formal receipts
-                without searching your inbox.
-              </p>
-            </div>
-
-            <div className="profile-dashboard__hero-note">
-              <span>{user ? memberLabel : "Guest access"}</span>
-              <strong>{user ? totalOrdersLabel : "Sign in required"}</strong>
-            </div>
-          </header>
-
           {bootLoading ? <p className="profile-dashboard__loading">Loading account dashboard...</p> : null}
 
           {!bootLoading && state === "signup-success" ? (
@@ -819,84 +671,76 @@ function ProfileDashboard() {
           {!bootLoading && !user ? <SignedOutState error={pageError ?? dashboardError} /> : null}
 
           {user ? (
-            <div className="profile-dashboard__layout">
-              <aside className="profile-rail">
-                <section className="profile-rail__panel profile-identity">
+            <>
+              <header className="profile-hero">
+                <div className="profile-hero__identity">
                   <div className="profile-identity__mark" aria-hidden="true">
                     {(user.firstName?.[0] ?? "").toUpperCase()}
                     {(user.lastName?.[0] ?? "").toUpperCase()}
                   </div>
-                  <div className="profile-dashboard__eyebrow">Account holder</div>
-                  <h2 className="profile-dashboard__section-title">
-                    {user.displayName || `${user.firstName} ${user.lastName}`.trim() || "Customer"}
-                  </h2>
-                  <dl className="profile-identity__facts">
-                    <div>
-                      <dt>Email</dt>
-                      <dd>{user.email}</dd>
-                    </div>
-                    <div>
-                      <dt>Member type</dt>
-                      <dd>{memberLabel}</dd>
-                    </div>
-                    {user.accountType === "clinic" ? (
-                      <div>
-                        <dt>Business status</dt>
-                        <dd>
+                  <div className="profile-hero__meta">
+                    <span className="profile-dashboard__eyebrow">Account holder</span>
+                    <h1 className="profile-hero__name">
+                      {user.displayName || `${user.firstName} ${user.lastName}`.trim() || "Customer"}
+                    </h1>
+                    <div className="profile-hero__badges">
+                      <span className="profile-hero__badge">{memberLabel}</span>
+                      {user.accountType === "clinic" ? (
+                        <span
+                          className={`profile-hero__badge profile-hero__badge--status profile-hero__badge--${user.clinicStatus ?? "pending"}`}
+                        >
                           {user.clinicStatus === "approved"
                             ? "Approved"
                             : user.clinicStatus === "rejected"
                               ? "Not approved"
                               : "Pending review"}
-                        </dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                </section>
-
-                {clinicMessage ? (
-                  <section className="profile-rail__panel profile-rail__panel--status">
-                    <div className="profile-dashboard__eyebrow">Business account</div>
-                    <p className="profile-dashboard__copy">{clinicMessage}</p>
-                    {user.businessInfo?.businessName || user.businessInfo?.clinicName ? (
-                      <p className="profile-dashboard__copy profile-dashboard__copy--compact">
-                        Registered as {user.businessInfo.businessName || user.businessInfo.clinicName}.
-                      </p>
-                    ) : null}
-                  </section>
-                ) : null}
-
-                <section className="profile-rail__panel profile-rail__panel--actions">
-                  <div className="profile-dashboard__eyebrow">Account actions</div>
-                  <div className="profile-dashboard__stack">
-                    <Link href="/products" className="profile-dashboard__button">
-                      Continue shopping
-                    </Link>
-                    <Link href="/cart" className="profile-dashboard__button profile-dashboard__button--secondary">
-                      View bag
-                    </Link>
-                    <Link href="/order-lookup" className="profile-dashboard__button profile-dashboard__button--secondary">
-                      Guest order lookup
-                    </Link>
-                    <Link
-                      href="/forgot-password"
-                      className="profile-dashboard__button profile-dashboard__button--secondary"
-                    >
-                      Reset password
-                    </Link>
-                    <button
-                      type="button"
-                      className="profile-dashboard__button profile-dashboard__button--secondary"
-                      onClick={() => logoutMutation.mutate()}
-                      disabled={logoutMutation.isPending}
-                    >
-                      {logoutMutation.isPending ? "Signing out..." : "Log out"}
-                    </button>
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="profile-hero__email">{user.email}</p>
                   </div>
-                </section>
-              </aside>
+                </div>
 
-              <div className="profile-dashboard__content">
+                <div className="profile-hero__actions">
+                  <Link href="/products" className="profile-dashboard__button">
+                    Continue shopping
+                  </Link>
+                  <button
+                    type="button"
+                    className="profile-dashboard__button profile-dashboard__button--secondary"
+                    onClick={() => logoutMutation.mutate()}
+                    disabled={logoutMutation.isPending}
+                  >
+                    {logoutMutation.isPending ? "Signing out..." : "Log out"}
+                  </button>
+                </div>
+              </header>
+
+              {clinicMessage ? (
+                <div className={`profile-clinic-notice profile-clinic-notice--${user.clinicStatus ?? "pending"}`}>
+                  <span className="profile-dashboard__eyebrow">Business account</span>
+                  <p>{clinicMessage}</p>
+                  {user.businessInfo?.businessName || user.businessInfo?.clinicName ? (
+                    <p className="profile-clinic-notice__sub">
+                      Registered as {user.businessInfo.businessName || user.businessInfo.clinicName}.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <nav className="profile-nav-strip" aria-label="Account navigation">
+                <Link href="/cart" className="profile-nav-strip__link">
+                  View Bag
+                </Link>
+                <Link href="/order-lookup" className="profile-nav-strip__link">
+                  Order Lookup
+                </Link>
+                <Link href="/forgot-password" className="profile-nav-strip__link">
+                  Reset Password
+                </Link>
+              </nav>
+
+              <div className="profile-content">
                 <OrdersSection
                   orders={orders}
                   loading={dashboardQuery.isPending}
@@ -924,12 +768,10 @@ function ProfileDashboard() {
                   error={settingsError}
                   onFieldChange={updateFormField}
                   onBusinessFieldChange={updateBusinessField}
-                  onAddressChange={updateAddressField}
-                  onCopyBillingToShipping={copyBillingToShipping}
                   onSubmit={() => void handleSaveSettings()}
                 />
               </div>
-            </div>
+            </>
           ) : null}
         </div>
       </main>

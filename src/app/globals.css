@@ -6638,6 +6638,165 @@ h5,
 }
 
 /* ================================================================
+   PROFILE PAGE — NEW EDITORIAL LAYOUT
+   ================================================================ */
+
+.profile-hero {
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(59, 59, 59, 0.09);
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  padding: clamp(2rem, 3.5vw, 3rem) 0 clamp(1.5rem, 2.5vw, 2rem);
+}
+
+.profile-hero__identity {
+  align-items: flex-start;
+  display: flex;
+  gap: 1.25rem;
+}
+
+.profile-hero__meta {
+  align-content: start;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.profile-hero__name {
+  color: var(--color-dark);
+  font-family: "Editorial New", serif;
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  margin-top: 0.3rem;
+}
+
+.profile-hero__email {
+  color: var(--color-gray2);
+  font-size: 0.86rem;
+  margin-top: 0.3rem;
+}
+
+.profile-hero__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.profile-hero__badge {
+  background: rgba(241, 236, 228, 0.88);
+  border: 1px solid rgba(59, 59, 59, 0.1);
+  border-radius: 999px;
+  color: var(--color-text);
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 0.32rem 0.72rem;
+  text-transform: uppercase;
+}
+
+.profile-hero__badge--approved {
+  background: rgba(219, 233, 220, 0.72);
+  border-color: rgba(100, 155, 105, 0.16);
+}
+
+.profile-hero__badge--rejected {
+  background: rgba(238, 223, 223, 0.72);
+  border-color: rgba(141, 72, 72, 0.14);
+}
+
+.profile-hero__badge--pending {
+  background: rgba(234, 223, 201, 0.78);
+}
+
+.profile-hero__actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.7rem;
+  padding-top: 0.55rem;
+}
+
+/* Clinic notice strip */
+.profile-clinic-notice {
+  background: rgba(234, 223, 201, 0.38);
+  border: 1px solid rgba(59, 59, 59, 0.08);
+  border-radius: 0.85rem;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.profile-clinic-notice--approved {
+  background: rgba(219, 233, 220, 0.38);
+  border-color: rgba(100, 155, 105, 0.14);
+}
+
+.profile-clinic-notice--rejected {
+  background: rgba(238, 223, 223, 0.38);
+  border-color: rgba(141, 72, 72, 0.12);
+}
+
+.profile-clinic-notice p {
+  color: var(--color-text);
+  font-size: 0.91rem;
+  line-height: 1.55;
+}
+
+.profile-clinic-notice__sub {
+  color: var(--color-gray2) !important;
+  font-size: 0.83rem !important;
+}
+
+/* Horizontal nav strip */
+.profile-nav-strip {
+  border-bottom: 1px solid rgba(59, 59, 59, 0.09);
+  display: flex;
+  gap: 1.5rem;
+}
+
+.profile-nav-strip__link {
+  color: var(--color-gray2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 0.9rem 0;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 160ms ease;
+}
+
+.profile-nav-strip__link:hover {
+  color: var(--color-dark);
+}
+
+/* Single-column content area */
+.profile-content {
+  display: grid;
+  gap: 1.1rem;
+}
+
+@media (max-width: 767.98px) {
+  .profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .profile-hero__actions {
+    padding-top: 0;
+    width: 100%;
+  }
+
+  .profile-hero__actions .profile-dashboard__button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ================================================================
    ABOUT US PAGE
    ================================================================ */
 
