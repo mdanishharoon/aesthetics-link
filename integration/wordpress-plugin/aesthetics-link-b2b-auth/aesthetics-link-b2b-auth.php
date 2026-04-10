@@ -242,6 +242,7 @@ function al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature) {
 
 	$exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
 	$cart_token = isset($payload['cartToken']) ? trim((string) $payload['cartToken']) : '';
+	$user_id = isset($payload['userId']) ? (int) $payload['userId'] : 0;
 
 	if ($exp <= 0 || $exp < time()) {
 		return null;
@@ -253,6 +254,7 @@ function al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature) {
 
 	return array(
 		'cartToken' => $cart_token,
+		'userId' => $user_id > 0 ? $user_id : 0,
 	);
 }
 
@@ -604,11 +606,20 @@ function al_b2b_fetch_store_cart_by_token($cart_token) {
 	$response = rest_get_server()->dispatch($request);
 
 	if (is_wp_error($response)) {
+		al_b2b_log_checkout_bridge_error('Store cart fetch failed before response dispatch completed.', array(
+			'cart_token_present' => !empty($cart_token),
+			'message' => $response->get_error_message(),
+		));
 		return null;
 	}
 
 	$status = method_exists($response, 'get_status') ? (int) $response->get_status() : 500;
 	if ($status < 200 || $status >= 300) {
+		$data = method_exists($response, 'get_data') ? $response->get_data() : null;
+		al_b2b_log_checkout_bridge_error('Store cart fetch returned a non-success status.', array(
+			'status' => $status,
+			'body' => is_array($data) ? $data : null,
+		));
 		return null;
 	}
 
@@ -634,25 +645,67 @@ function al_b2b_log_checkout_bridge_error($message, $context = array()) {
 	error_log('[al-b2b-checkout-bridge] ' . $message . (!empty($context) ? ' ' . wp_json_encode($context) : '')); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 }
 
-function al_b2b_sync_wc_cart_from_store_token($cart_token) {
+function al_b2b_get_checkout_bridge_failure_url($code) {
+	$code = sanitize_key((string) $code);
+	return al_b2b_build_frontend_url('cart', array(
+		'checkout_error' => $code ? $code : 'bridge_sync_failed',
+	));
+}
+
+function al_b2b_sync_wc_cart_from_store_token($cart_token, $bridge_user_id = 0) {
+	$result = array(
+		'ok' => false,
+		'error_code' => 'bridge_sync_failed',
+		'source_line_count' => 0,
+		'source_quantity_total' => 0,
+		'final_quantity_total' => 0,
+		'failed_lines' => 0,
+	);
+	$previous_user_id = get_current_user_id();
+
 	try {
 		if (!function_exists('WC') || !function_exists('wc_load_cart') || !function_exists('wc_get_product')) {
-			return false;
+			$result['error_code'] = 'woocommerce_unavailable';
+			return $result;
+		}
+
+		$bridge_user_id = (int) $bridge_user_id;
+		if ($bridge_user_id > 0) {
+			$user = get_user_by('id', $bridge_user_id);
+			if (!$user) {
+				$result['error_code'] = 'bridge_user_invalid';
+				return $result;
+			}
+
+			wp_set_current_user($bridge_user_id);
 		}
 
 		$store_cart = al_b2b_fetch_store_cart_by_token($cart_token);
 		if (!$store_cart || !isset($store_cart['items']) || !is_array($store_cart['items'])) {
-			return false;
+			$result['error_code'] = 'store_cart_unavailable';
+			return $result;
+		}
+
+		$result['source_line_count'] = count($store_cart['items']);
+		if ($result['source_line_count'] <= 0) {
+			$result['error_code'] = 'store_cart_empty';
+			return $result;
 		}
 
 		wc_load_cart();
 		if (!WC()->session || !WC()->cart) {
-			return false;
+			$result['error_code'] = 'wc_cart_unavailable';
+			return $result;
 		}
 
 		if (method_exists(WC()->session, 'set_customer_session_cookie')) {
 			WC()->session->set_customer_session_cookie(true);
 		}
+
+		if (function_exists('wc_clear_notices')) {
+			wc_clear_notices();
+		}
+
 		WC()->cart->empty_cart();
 
 		foreach ($store_cart['items'] as $item) {
@@ -667,8 +720,16 @@ function al_b2b_sync_wc_cart_from_store_token($cart_token) {
 				continue;
 			}
 
+			$result['source_quantity_total'] += $quantity;
+
 			$product = wc_get_product($raw_product_id);
 			if (!$product) {
+				$result['failed_lines'] += 1;
+				al_b2b_log_checkout_bridge_error('Bridge sync could not resolve product from Store API cart item.', array(
+					'raw_product_id' => $raw_product_id,
+					'item_type' => isset($item['type']) ? $item['type'] : '',
+					'item_key' => isset($item['key']) ? $item['key'] : '',
+				));
 				continue;
 			}
 
@@ -686,11 +747,32 @@ function al_b2b_sync_wc_cart_from_store_token($cart_token) {
 			}
 
 			try {
-				WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation_data);
+				$cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation_data);
+				if (!$cart_item_key) {
+					$result['failed_lines'] += 1;
+					$notices = function_exists('wc_get_notices') ? wc_get_notices('error') : array();
+					al_b2b_log_checkout_bridge_error('Failed to add cart line item during bridge sync.', array(
+						'product_id' => $product_id,
+						'variation_id' => $variation_id,
+						'item_key' => isset($item['key']) ? $item['key'] : '',
+						'item_type' => isset($item['type']) ? $item['type'] : '',
+						'variation_data' => $variation_data,
+						'store_variation' => isset($item['variation']) ? $item['variation'] : array(),
+						'notices' => is_array($notices) ? $notices : array(),
+					));
+					if (function_exists('wc_clear_notices')) {
+						wc_clear_notices();
+					}
+				}
 			} catch (Throwable $item_error) {
+				$result['failed_lines'] += 1;
 				al_b2b_log_checkout_bridge_error('Failed to add cart line item during bridge sync.', array(
 					'product_id' => $product_id,
 					'variation_id' => $variation_id,
+					'item_key' => isset($item['key']) ? $item['key'] : '',
+					'item_type' => isset($item['type']) ? $item['type'] : '',
+					'variation_data' => $variation_data,
+					'store_variation' => isset($item['variation']) ? $item['variation'] : array(),
 					'message' => $item_error->getMessage(),
 				));
 			}
@@ -712,14 +794,38 @@ function al_b2b_sync_wc_cart_from_store_token($cart_token) {
 			wc_setcookie('woocommerce_cart_hash', WC()->cart->get_cart_hash());
 		}
 
-		return true;
+		$result['final_quantity_total'] = (int) WC()->cart->get_cart_contents_count();
+		if (
+			$result['source_quantity_total'] <= 0 ||
+			$result['failed_lines'] > 0 ||
+			$result['final_quantity_total'] !== $result['source_quantity_total']
+		) {
+			$result['error_code'] = 'bridge_cart_mismatch';
+			WC()->cart->empty_cart();
+			if (method_exists(WC()->cart, 'set_session')) {
+				WC()->cart->set_session();
+			}
+			if (method_exists(WC()->session, 'save_data')) {
+				WC()->session->save_data();
+			}
+			return $result;
+		}
+
+		$result['ok'] = true;
+		$result['error_code'] = '';
+		return $result;
 	} catch (Throwable $error) {
 		al_b2b_log_checkout_bridge_error('Bridge cart sync crashed.', array(
 			'message' => $error->getMessage(),
 			'file' => $error->getFile(),
 			'line' => $error->getLine(),
 		));
-		return false;
+		$result['error_code'] = 'bridge_crashed';
+		return $result;
+	} finally {
+		if ((int) $bridge_user_id > 0) {
+			wp_set_current_user($previous_user_id);
+		}
 	}
 }
 
@@ -736,15 +842,33 @@ function al_b2b_maybe_handle_checkout_bridge() {
 	}
 
 	$checkout_url = function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout');
+	$failure_url = al_b2b_get_checkout_bridge_failure_url('bridge_invalid');
 	try {
 		$payload = al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature);
 
 		if (!$payload || !isset($payload['cartToken'])) {
-			wp_safe_redirect($checkout_url);
+			wp_safe_redirect($failure_url);
 			exit;
 		}
 
-		al_b2b_sync_wc_cart_from_store_token($payload['cartToken']);
+		$sync_result = al_b2b_sync_wc_cart_from_store_token(
+			$payload['cartToken'],
+			isset($payload['userId']) ? (int) $payload['userId'] : 0
+		);
+		if (empty($sync_result['ok'])) {
+			al_b2b_log_checkout_bridge_error('Bridge cart sync did not complete successfully.', array(
+				'error_code' => isset($sync_result['error_code']) ? $sync_result['error_code'] : 'bridge_sync_failed',
+				'source_line_count' => isset($sync_result['source_line_count']) ? $sync_result['source_line_count'] : 0,
+				'source_quantity_total' => isset($sync_result['source_quantity_total']) ? $sync_result['source_quantity_total'] : 0,
+				'final_quantity_total' => isset($sync_result['final_quantity_total']) ? $sync_result['final_quantity_total'] : 0,
+				'failed_lines' => isset($sync_result['failed_lines']) ? $sync_result['failed_lines'] : 0,
+			));
+			wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url(
+				isset($sync_result['error_code']) ? $sync_result['error_code'] : 'bridge_sync_failed'
+			));
+			exit;
+		}
+
 		wp_safe_redirect($checkout_url);
 		exit;
 	} catch (Throwable $error) {
@@ -753,7 +877,7 @@ function al_b2b_maybe_handle_checkout_bridge() {
 			'file' => $error->getFile(),
 			'line' => $error->getLine(),
 		));
-		wp_safe_redirect($checkout_url);
+		wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url('bridge_crashed'));
 		exit;
 	}
 }

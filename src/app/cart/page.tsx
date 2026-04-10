@@ -28,6 +28,7 @@ export default function CartPage() {
   const [initialCachedCart] = useState<StorefrontCart | null>(() => getCachedCartSnapshot());
   const [cart, setCart] = useState<StorefrontCart>(initialCachedCart ?? EMPTY_CART);
   const [loading, setLoading] = useState(initialCachedCart === null);
+  const [hasLiveCart, setHasLiveCart] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +40,7 @@ export default function CartPage() {
     try {
       const nextCart = await fetchCart();
       setCart(nextCart);
+      setHasLiveCart(true);
     } catch (cartError) {
       setError(cartError instanceof Error ? cartError.message : "Unable to load your cart.");
     } finally {
@@ -53,8 +55,31 @@ export default function CartPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const checkoutError = params.get("checkout_error");
-    if (checkoutError === "bridge_unavailable") {
-      setError("Checkout bridge is temporarily unavailable. Please try again in a moment.");
+    if (checkoutError) {
+      const checkoutErrorMessages: Record<string, string> = {
+        bridge_unavailable: "Checkout bridge is temporarily unavailable. Please try again in a moment.",
+        missing_cart_token: "Your checkout session expired. Please refresh your bag before continuing.",
+        bridge_identity_unavailable:
+          "We could not verify your account context for checkout. Please refresh and try again.",
+        bridge_invalid: "The checkout handoff was invalid. Please try again from your bag.",
+        bridge_crashed: "Checkout failed during handoff. Please try again in a moment.",
+        bridge_sync_failed: "We could not sync your bag into checkout. Please try again.",
+        bridge_cart_mismatch:
+          "Your bag changed during checkout handoff. Please review it and try again.",
+        store_cart_unavailable:
+          "We could not read your current bag from WooCommerce. Please try again in a moment.",
+        store_cart_empty: "Your bag is empty. Add items before proceeding to checkout.",
+        wc_cart_unavailable:
+          "WooCommerce checkout is not ready right now. Please try again in a moment.",
+        woocommerce_unavailable:
+          "WooCommerce checkout is not available right now. Please try again in a moment.",
+        bridge_user_invalid:
+          "Your account context could not be restored for checkout. Please sign in again.",
+      };
+      setError(
+        checkoutErrorMessages[checkoutError] ??
+          "Checkout could not be started. Please review your bag and try again.",
+      );
       params.delete("checkout_error");
       const nextQuery = params.toString();
       const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
@@ -200,7 +225,7 @@ export default function CartPage() {
               type="button"
               className="checkout-btn"
               onClick={handleGoToCheckout}
-              disabled={cart.items.length === 0}
+              disabled={cart.items.length === 0 || loading || busy || !hasLiveCart}
             >
               Proceed to Secure Checkout
             </button>

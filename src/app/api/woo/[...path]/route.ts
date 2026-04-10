@@ -7,10 +7,14 @@ const NONCE_TOKEN_COOKIE = "woo_nonce_token";
 const ALLOWED_ROOTS = new Set(["products", "cart", "checkout", "order"]);
 const RETRYABLE_NETWORK_CODES = new Set([
   "ECONNRESET",
+  "ECONNREFUSED",
   "ETIMEDOUT",
   "EAI_AGAIN",
   "ENOTFOUND",
+  "UND_ERR_ABORTED",
+  "UND_ERR_BODY_TIMEOUT",
   "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
   "UND_ERR_SOCKET",
 ]);
 type RouteContextParams = { params: Promise<{ path?: string[] }> };
@@ -160,7 +164,7 @@ async function proxyWooStoreApi(
 
   let upstreamResponse: Response;
   try {
-    const attempts = request.method === "GET" || request.method === "HEAD" ? 2 : 1;
+    const attempts = request.method === "GET" || request.method === "HEAD" ? 3 : 1;
     upstreamResponse = await fetchWithRetry(
       upstreamUrl.toString(),
       {
