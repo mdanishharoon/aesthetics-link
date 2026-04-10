@@ -13,15 +13,17 @@
 export const GET_PRODUCT_BY_SLUG = `
   query GetProductBySlug($slug: ID!) {
     product(id: $slug, idType: SLUG) {
-      databaseId
-      slug
-      name
-      type
-      description
-      shortDescription
-      image { sourceUrl altText }
-      galleryImages(first: 3) { nodes { sourceUrl altText } }
-      productCategories(first: 5) { nodes { name slug } }
+      ... on Product {
+        databaseId
+        slug
+        name
+        type
+        description
+        shortDescription
+        image { sourceUrl altText }
+        galleryImages(first: 3) { nodes { sourceUrl altText } }
+        productCategories(first: 5) { nodes { name slug } }
+      }
       ... on SimpleProduct {
         price
         regularPrice
@@ -54,13 +56,15 @@ export const GET_CATALOG_PRODUCTS = `
   query GetCatalogProducts($first: Int!) {
     products(first: $first) {
       nodes {
-        databaseId
-        slug
-        name
-        type
-        shortDescription
-        image { sourceUrl altText }
-        productCategories(first: 3) { nodes { name slug } }
+        ... on Product {
+          databaseId
+          slug
+          name
+          type
+          shortDescription
+          image { sourceUrl altText }
+          productCategories(first: 3) { nodes { name slug } }
+        }
         ... on SimpleProduct {
           price
           regularPrice
