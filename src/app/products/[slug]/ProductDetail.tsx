@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
 import { getMe, getWholesalePrices } from "@/lib/auth/client";
-import { addCartItem, addVariableCartItem, fetchVariableConfig } from "@/lib/storefront/client";
+import { addCartItem, addVariableCartItem, fetchVariableConfig, lookupVariationPrice } from "@/lib/storefront/client";
 import type {
   StorefrontDetailProduct,
   StorefrontVariableConfig,
@@ -250,6 +250,47 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
   const variationEntries = variationConfig?.variations ?? [];
   const optionsReady = !isVariableProduct || variationAttributes.length > 0;
   const missingSelections = variationAttributes.filter((attribute) => !variationSelection[attribute.id]);
+
+  // Fetch the variation price on-demand whenever the selection changes.
+  // This uses the wc-ajax=get_variation endpoint — WooCommerce's own mechanism —
+  // which is reliable regardless of how the Store API exposes variation data.
+  useEffect(() => {
+    if (!isVariableProduct || !product.wooId || isWholesalePrice) {
+      return;
+    }
+    if (variationAttributes.length === 0 || missingSelections.length > 0) {
+      return;
+    }
+
+    let active = true;
+
+    async function fetchPriceForSelection(): Promise<void> {
+      try {
+        const result = await lookupVariationPrice(
+          product.wooId!,
+          variationAttributes.map((attribute) => ({
+            apiName: attribute.apiName,
+            value: variationSelection[attribute.id] ?? "",
+          })),
+        );
+        if (!active || !result) {
+          return;
+        }
+        setDisplayPrice(result.price);
+        setDisplayRegularPrice(result.regularPrice);
+      } catch {
+        // Keep existing price on error — don't break the page
+      }
+    }
+
+    void fetchPriceForSelection();
+
+    return () => {
+      active = false;
+    };
+  }, [variationSelection, isVariableProduct, product.wooId, isWholesalePrice, variationAttributes, missingSelections.length]);
+
+
   const selectedVariation = useMemo(() => {
     if (!isVariableProduct || variationAttributes.length === 0 || variationEntries.length === 0) {
       return null;

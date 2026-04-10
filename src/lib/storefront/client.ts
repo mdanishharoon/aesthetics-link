@@ -645,6 +645,64 @@ function mapRawCart(rawCart: RawCart): StorefrontCart {
   };
 }
 
+type WooAjaxVariationResponse = {
+  found?: boolean;
+  display_price?: number;
+  display_regular_price?: number;
+  is_in_stock?: boolean;
+  price_html?: string;
+};
+
+function parsePriceHtml(html: string): { price: string; regularPrice: string | null } {
+  const stripTags = (s: string) => decodeEntities(s.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim());
+  const insMatch = /<ins[^>]*>([\s\S]*?)<\/ins>/i.exec(html);
+  const delMatch = /<del[^>]*>([\s\S]*?)<\/del>/i.exec(html);
+  if (insMatch && delMatch) {
+    return { price: stripTags(insMatch[1]), regularPrice: stripTags(delMatch[1]) };
+  }
+  return { price: stripTags(html), regularPrice: null };
+}
+
+export async function lookupVariationPrice(
+  productId: number,
+  attributes: Array<{ apiName: string; value: string }>,
+): Promise<{ price: string; regularPrice: string | null; inStock: boolean } | null> {
+  const body = new URLSearchParams();
+  body.set("action", "get_variation");
+  body.set("product_id", String(productId));
+  for (const { apiName, value } of attributes) {
+    const key = apiName.startsWith("attribute_") ? apiName : `attribute_${apiName}`;
+    body.set(key, value);
+  }
+
+  const response = await fetch("/api/woo-ajax", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = (await response.json().catch(() => null)) as WooAjaxVariationResponse | null;
+  if (!data || data.found === false) {
+    return null;
+  }
+
+  if (!data.price_html) {
+    return null;
+  }
+
+  const { price, regularPrice } = parsePriceHtml(data.price_html);
+  if (!price) {
+    return null;
+  }
+
+  return { price, regularPrice, inStock: data.is_in_stock ?? true };
+}
+
 export async function fetchCart(): Promise<StorefrontCart> {
   const raw = await requestStoreApi<RawCart>("/cart");
   return mapRawCart(raw);
