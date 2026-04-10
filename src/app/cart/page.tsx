@@ -3,7 +3,12 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
-import { fetchCart, removeCartItem, updateCartItemQuantity } from "@/lib/storefront/client";
+import {
+  fetchCart,
+  getCachedCartSnapshot,
+  removeCartItem,
+  updateCartItemQuantity,
+} from "@/lib/storefront/client";
 import type { StorefrontCart } from "@/lib/storefront/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -20,13 +25,16 @@ const EMPTY_CART: StorefrontCart = {
 };
 
 export default function CartPage() {
-  const [cart, setCart] = useState<StorefrontCart>(EMPTY_CART);
-  const [loading, setLoading] = useState(true);
+  const [initialCachedCart] = useState<StorefrontCart | null>(() => getCachedCartSnapshot());
+  const [cart, setCart] = useState<StorefrontCart>(initialCachedCart ?? EMPTY_CART);
+  const [loading, setLoading] = useState(initialCachedCart === null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function refreshCart(): Promise<void> {
-    setLoading(true);
+  async function refreshCart(showLoadingState = true): Promise<void> {
+    if (showLoadingState) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const nextCart = await fetchCart();
@@ -39,7 +47,19 @@ export default function CartPage() {
   }
 
   useEffect(() => {
-    void refreshCart();
+    void refreshCart(initialCachedCart === null);
+  }, [initialCachedCart]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutError = params.get("checkout_error");
+    if (checkoutError === "bridge_unavailable") {
+      setError("Checkout bridge is temporarily unavailable. Please try again in a moment.");
+      params.delete("checkout_error");
+      const nextQuery = params.toString();
+      const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+      window.history.replaceState(window.history.state, "", nextUrl);
+    }
   }, []);
 
   async function withCartMutation(action: () => Promise<StorefrontCart>): Promise<void> {

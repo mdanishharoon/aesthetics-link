@@ -22,6 +22,14 @@ function signPayload(payload: string, secret: string): string {
   return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
+function redirectToFrontendCartWithError(request: NextRequest, errorCode: string): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = "/cart";
+  url.search = "";
+  url.searchParams.set("checkout_error", errorCode);
+  return NextResponse.redirect(url, 307);
+}
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const baseUrl = getWooStoreBaseUrl();
 
@@ -33,8 +41,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const cartToken = request.cookies.get(CART_TOKEN_COOKIE)?.value?.trim();
   const secret = process.env.WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET?.trim();
 
-  if (!cartToken || !secret) {
+  if (!cartToken) {
     return NextResponse.redirect(checkoutUrl, 307);
+  }
+
+  if (!secret) {
+    console.error("[Checkout bridge] Missing WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET.");
+    return redirectToFrontendCartWithError(request, "bridge_unavailable");
   }
 
   const now = Math.floor(Date.now() / 1000);

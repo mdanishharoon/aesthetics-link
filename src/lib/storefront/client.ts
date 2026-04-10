@@ -51,6 +51,7 @@ type RawCart = {
 // ── Utilities ──────────────────────────────────────────────────────────────
 
 const ACCENT_COLORS = ["#F1CCCF", "#D8D0C4", "#D3E5EF", "#E8DFC8"];
+const CART_CACHE_KEY = "al_storefront_cart_snapshot_v1";
 
 function decodeEntities(value: string): string {
   return value
@@ -179,18 +180,72 @@ function parseCartItemVariations(input: unknown): Array<{ label: string; value: 
   return Array.from(deduped.values());
 }
 
+function canUseStorage(): boolean {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function saveCachedCartSnapshot(cart: StorefrontCart): void {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CART_CACHE_KEY, JSON.stringify(cart));
+  } catch {
+    // Ignore storage write failures (private mode/quota/security policy).
+  }
+}
+
+export function getCachedCartSnapshot(): StorefrontCart | null {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CART_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<StorefrontCart> | null;
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.items)) {
+      return null;
+    }
+
+    return {
+      items: parsed.items,
+      itemCount: typeof parsed.itemCount === "number" ? parsed.itemCount : parsed.items.length,
+      subtotal: typeof parsed.subtotal === "string" ? parsed.subtotal : "$0.00",
+      shipping: typeof parsed.shipping === "string" ? parsed.shipping : "$0.00",
+      tax: typeof parsed.tax === "string" ? parsed.tax : "$0.00",
+      total: typeof parsed.total === "string" ? parsed.total : "$0.00",
+      currencySymbol: typeof parsed.currencySymbol === "string" ? parsed.currencySymbol : "$",
+      needsShipping: Boolean(parsed.needsShipping),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── Store API client ───────────────────────────────────────────────────────
 
 async function requestStoreApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/woo${path}`, {
-    cache: "no-store",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`/api/woo${path}`, {
+      cache: "no-store",
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch (error) {
+    throw new Error("Temporary connection issue reaching checkout store. Please try again.", {
+      cause: error,
+    });
+  }
 
   const contentType = response.headers.get("content-type") ?? "";
   const payload = contentType.includes("application/json")
@@ -244,19 +299,39 @@ function mapRawCart(rawCart: RawCart): StorefrontCart {
   };
 }
 
+async function recoverCartAfterMutationFailure(): Promise<StorefrontCart | null> {
+  try {
+    return await fetchCart();
+  } catch {
+    return null;
+  }
+}
+
 // ── Cart operations ────────────────────────────────────────────────────────
 
 export async function fetchCart(): Promise<StorefrontCart> {
   const raw = await requestStoreApi<RawCart>("/cart");
-  return mapRawCart(raw);
+  const mapped = mapRawCart(raw);
+  saveCachedCartSnapshot(mapped);
+  return mapped;
 }
 
 export async function addCartItem(productId: number, quantity = 1): Promise<StorefrontCart> {
-  const raw = await requestStoreApi<RawCart>("/cart/add-item", {
-    method: "POST",
-    body: JSON.stringify({ id: productId, quantity }),
-  });
-  return mapRawCart(raw);
+  try {
+    const raw = await requestStoreApi<RawCart>("/cart/add-item", {
+      method: "POST",
+      body: JSON.stringify({ id: productId, quantity }),
+    });
+    const mapped = mapRawCart(raw);
+    saveCachedCartSnapshot(mapped);
+    return mapped;
+  } catch (error) {
+    const recovered = await recoverCartAfterMutationFailure();
+    if (recovered && recovered.items.some((item) => item.productId === productId)) {
+      return recovered;
+    }
+    throw error;
+  }
 }
 
 export async function addVariableCartItem(
@@ -271,31 +346,64 @@ export async function addVariableCartItem(
     }))
     .filter((entry) => entry.attribute && entry.value);
 
-  const raw = await requestStoreApi<RawCart>("/cart/add-item", {
-    method: "POST",
-    body: JSON.stringify({
-      id: productId,
-      quantity,
-      ...(sanitizedVariation.length > 0 ? { variation: sanitizedVariation } : {}),
-    }),
-  });
-  return mapRawCart(raw);
+  try {
+    const raw = await requestStoreApi<RawCart>("/cart/add-item", {
+      method: "POST",
+      body: JSON.stringify({
+        id: productId,
+        quantity,
+        ...(sanitizedVariation.length > 0 ? { variation: sanitizedVariation } : {}),
+      }),
+    });
+    const mapped = mapRawCart(raw);
+    saveCachedCartSnapshot(mapped);
+    return mapped;
+  } catch (error) {
+    const recovered = await recoverCartAfterMutationFailure();
+    if (recovered && recovered.items.some((item) => item.productId === productId)) {
+      return recovered;
+    }
+    throw error;
+  }
 }
 
 export async function updateCartItemQuantity(key: string, quantity: number): Promise<StorefrontCart> {
-  const raw = await requestStoreApi<RawCart>("/cart/update-item", {
-    method: "POST",
-    body: JSON.stringify({ key, quantity }),
-  });
-  return mapRawCart(raw);
+  const targetQuantity = Math.max(1, quantity);
+
+  try {
+    const raw = await requestStoreApi<RawCart>("/cart/update-item", {
+      method: "POST",
+      body: JSON.stringify({ key, quantity: targetQuantity }),
+    });
+    const mapped = mapRawCart(raw);
+    saveCachedCartSnapshot(mapped);
+    return mapped;
+  } catch (error) {
+    const recovered = await recoverCartAfterMutationFailure();
+    const recoveredItem = recovered?.items.find((item) => item.key === key);
+    if (recovered && recoveredItem && recoveredItem.quantity === targetQuantity) {
+      return recovered;
+    }
+    throw error;
+  }
 }
 
 export async function removeCartItem(key: string): Promise<StorefrontCart> {
-  const raw = await requestStoreApi<RawCart>("/cart/remove-item", {
-    method: "POST",
-    body: JSON.stringify({ key }),
-  });
-  return mapRawCart(raw);
+  try {
+    const raw = await requestStoreApi<RawCart>("/cart/remove-item", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    });
+    const mapped = mapRawCart(raw);
+    saveCachedCartSnapshot(mapped);
+    return mapped;
+  } catch (error) {
+    const recovered = await recoverCartAfterMutationFailure();
+    if (recovered && !recovered.items.some((item) => item.key === key)) {
+      return recovered;
+    }
+    throw error;
+  }
 }
 
 export async function submitCheckout(
