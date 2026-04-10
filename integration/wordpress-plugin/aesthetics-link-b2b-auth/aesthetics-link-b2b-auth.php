@@ -1046,6 +1046,176 @@ function al_b2b_rest_checkout_bridge(WP_REST_Request $request) {
 	}
 }
 
+function al_b2b_get_country_label($country_code) {
+	$country_code = strtoupper(trim((string) $country_code));
+	if (!$country_code) {
+		return '';
+	}
+
+	if (function_exists('WC') && WC() && isset(WC()->countries) && isset(WC()->countries->countries[$country_code])) {
+		return (string) WC()->countries->countries[$country_code];
+	}
+
+	return $country_code;
+}
+
+function al_b2b_map_order_address($order, $type) {
+	$type = $type === 'shipping' ? 'shipping' : 'billing';
+	$getter_prefix = 'get_' . $type . '_';
+
+	$first_name = is_callable(array($order, $getter_prefix . 'first_name')) ? (string) $order->{$getter_prefix . 'first_name'}() : '';
+	$last_name = is_callable(array($order, $getter_prefix . 'last_name')) ? (string) $order->{$getter_prefix . 'last_name'}() : '';
+	$company = is_callable(array($order, $getter_prefix . 'company')) ? (string) $order->{$getter_prefix . 'company'}() : '';
+	$address_1 = is_callable(array($order, $getter_prefix . 'address_1')) ? (string) $order->{$getter_prefix . 'address_1'}() : '';
+	$address_2 = is_callable(array($order, $getter_prefix . 'address_2')) ? (string) $order->{$getter_prefix . 'address_2'}() : '';
+	$city = is_callable(array($order, $getter_prefix . 'city')) ? (string) $order->{$getter_prefix . 'city'}() : '';
+	$state = is_callable(array($order, $getter_prefix . 'state')) ? (string) $order->{$getter_prefix . 'state'}() : '';
+	$postcode = is_callable(array($order, $getter_prefix . 'postcode')) ? (string) $order->{$getter_prefix . 'postcode'}() : '';
+	$country = is_callable(array($order, $getter_prefix . 'country')) ? (string) $order->{$getter_prefix . 'country'}() : '';
+	$email = $type === 'billing' && is_callable(array($order, 'get_billing_email')) ? (string) $order->get_billing_email() : '';
+	$phone = $type === 'billing' && is_callable(array($order, 'get_billing_phone')) ? (string) $order->get_billing_phone() : '';
+
+	$lines = array_values(array_filter(array(
+		trim($company),
+		trim($address_1),
+		trim($address_2),
+		trim(implode(', ', array_filter(array($city, $state, $postcode)))),
+		al_b2b_get_country_label($country),
+	)));
+
+	return array(
+		'name' => trim($first_name . ' ' . $last_name),
+		'company' => $company,
+		'address1' => $address_1,
+		'address2' => $address_2,
+		'city' => $city,
+		'state' => $state,
+		'postcode' => $postcode,
+		'country' => al_b2b_get_country_label($country),
+		'email' => $email,
+		'phone' => $phone,
+		'lines' => $lines,
+	);
+}
+
+function al_b2b_map_order_item_meta($item) {
+	$meta_entries = array();
+	$meta_data = method_exists($item, 'get_meta_data') ? $item->get_meta_data() : array();
+
+	foreach ($meta_data as $meta) {
+		$key = isset($meta->key) ? (string) $meta->key : '';
+		if (!$key || strpos($key, '_') === 0) {
+			continue;
+		}
+
+		$value = isset($meta->value) ? $meta->value : '';
+		if (is_array($value)) {
+			$value = implode(', ', array_map('strval', $value));
+		}
+
+		$value = wp_strip_all_tags((string) $value);
+		if ($value === '') {
+			continue;
+		}
+
+		$meta_entries[] = array(
+			'label' => function_exists('wc_attribute_label') ? wc_attribute_label($key) : $key,
+			'value' => $value,
+		);
+	}
+
+	return $meta_entries;
+}
+
+function al_b2b_map_order_line_item($item) {
+	if (!$item || !is_a($item, 'WC_Order_Item_Product')) {
+		return null;
+	}
+
+	$product = $item->get_product();
+	$image = '';
+
+	if ($product && method_exists($product, 'get_image_id')) {
+		$image_id = (int) $product->get_image_id();
+		if ($image_id > 0) {
+			$image = (string) wp_get_attachment_image_url($image_id, 'woocommerce_thumbnail');
+		}
+	}
+
+	$quantity = (int) $item->get_quantity();
+	$total = (float) $item->get_total();
+	$subtotal = (float) $item->get_subtotal();
+	$unit_price = $quantity > 0 ? $subtotal / $quantity : $subtotal;
+	$order = method_exists($item, 'get_order') ? $item->get_order() : null;
+	$currency = $order && method_exists($order, 'get_currency') ? (string) $order->get_currency() : '';
+
+	return array(
+		'id' => method_exists($item, 'get_product_id') ? (int) $item->get_product_id() : 0,
+		'variationId' => method_exists($item, 'get_variation_id') ? (int) $item->get_variation_id() : 0,
+		'name' => (string) $item->get_name(),
+		'quantity' => $quantity,
+		'unitPrice' => function_exists('wc_price') ? wp_strip_all_tags(wc_price($unit_price, array('currency' => $currency))) : (string) $unit_price,
+		'lineTotal' => function_exists('wc_price') ? wp_strip_all_tags(wc_price($total, array('currency' => $currency))) : (string) $total,
+		'image' => $image,
+		'sku' => $product && method_exists($product, 'get_sku') ? (string) $product->get_sku() : '',
+		'meta' => al_b2b_map_order_item_meta($item),
+	);
+}
+
+function al_b2b_get_order_confirmation($request) {
+	$order_id = (int) $request->get_param('order_id');
+	$order_key = trim((string) $request->get_param('key'));
+
+	if ($order_id <= 0 || !$order_key) {
+		return new WP_Error('invalid_order_confirmation', 'Order confirmation request is missing required details.', array('status' => 400));
+	}
+
+	if (!function_exists('wc_get_order') || !function_exists('wc_price') || !function_exists('wc_get_order_status_name')) {
+		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
+	}
+
+	$order = wc_get_order($order_id);
+	if (!$order) {
+		return new WP_Error('order_not_found', 'Order not found.', array('status' => 404));
+	}
+
+	if (!hash_equals((string) $order->get_order_key(), $order_key)) {
+		return new WP_Error('invalid_order_key', 'Order confirmation could not be verified.', array('status' => 404));
+	}
+
+	$currency = method_exists($order, 'get_currency') ? (string) $order->get_currency() : '';
+	$items = array();
+
+	foreach ($order->get_items() as $item) {
+		$mapped_item = al_b2b_map_order_line_item($item);
+		if ($mapped_item) {
+			$items[] = $mapped_item;
+		}
+	}
+
+	$totals = array(
+		'subtotal' => wp_strip_all_tags(wc_price((float) $order->get_subtotal(), array('currency' => $currency))),
+		'shipping' => wp_strip_all_tags(wc_price((float) $order->get_shipping_total(), array('currency' => $currency))),
+		'tax' => wp_strip_all_tags(wc_price((float) $order->get_total_tax(), array('currency' => $currency))),
+		'total' => wp_strip_all_tags(wc_price((float) $order->get_total(), array('currency' => $currency))),
+	);
+
+	return rest_ensure_response(array(
+		'orderId' => (int) $order->get_id(),
+		'orderNumber' => (string) $order->get_order_number(),
+		'status' => (string) $order->get_status(),
+		'statusLabel' => wc_get_order_status_name($order->get_status()),
+		'createdAt' => method_exists($order, 'get_date_created') && $order->get_date_created() ? $order->get_date_created()->date_i18n('j M Y, g:i a') : '',
+		'paymentMethod' => method_exists($order, 'get_payment_method_title') ? (string) $order->get_payment_method_title() : '',
+		'customerNote' => method_exists($order, 'get_customer_note') ? (string) $order->get_customer_note() : '',
+		'itemCount' => count($items),
+		'items' => $items,
+		'totals' => $totals,
+		'billingAddress' => al_b2b_map_order_address($order, 'billing'),
+		'shippingAddress' => al_b2b_map_order_address($order, 'shipping'),
+	));
+}
+
 function al_b2b_is_wholesale_approved_user($user) {
 	if (!$user || !isset($user->ID)) {
 		return false;
@@ -1413,6 +1583,12 @@ function al_b2b_register_routes() {
 	register_rest_route('aesthetics-link/v1', '/checkout/bridge', array(
 		'methods' => 'GET',
 		'callback' => 'al_b2b_rest_checkout_bridge',
+		'permission_callback' => '__return_true',
+	));
+
+	register_rest_route('aesthetics-link/v1', '/orders/confirmation', array(
+		'methods' => 'GET',
+		'callback' => 'al_b2b_get_order_confirmation',
 		'permission_callback' => '__return_true',
 	));
 }

@@ -97,6 +97,55 @@ export type StorefrontCheckoutResponse = {
   raw: unknown;
 };
 
+export type StorefrontOrderAddress = {
+  name: string;
+  company: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+  email?: string;
+  phone?: string;
+  lines: string[];
+};
+
+export type StorefrontOrderConfirmationItem = {
+  id: number;
+  variationId: number;
+  name: string;
+  quantity: number;
+  unitPrice: string;
+  lineTotal: string;
+  image: string;
+  sku: string;
+  meta: Array<{
+    label: string;
+    value: string;
+  }>;
+};
+
+export type StorefrontOrderConfirmation = {
+  orderId: number;
+  orderNumber: string;
+  status: string;
+  statusLabel: string;
+  createdAt: string;
+  paymentMethod: string;
+  customerNote: string;
+  itemCount: number;
+  items: StorefrontOrderConfirmationItem[];
+  totals: {
+    subtotal: string;
+    shipping: string;
+    tax: string;
+    total: string;
+  };
+  billingAddress: StorefrontOrderAddress;
+  shippingAddress: StorefrontOrderAddress;
+};
+
 export type StorefrontDetailProduct = Product & {
   regularPrice?: string | null;
   priceSource?: "retail" | "wholesale";

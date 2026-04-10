@@ -15,6 +15,7 @@ import type {
   StorefrontDetailProduct,
   StorefrontNavLink,
   StorefrontNavigation,
+  StorefrontOrderConfirmation,
   StorefrontVariableConfig,
   StorefrontVariationAttribute,
 } from "@/lib/storefront/types";
@@ -781,6 +782,48 @@ async function fetchWooProductBrandLookup(): Promise<WooProductBrandLookup | nul
 
   const payload = await response.json();
   return toWooProductBrandLookup(payload);
+}
+
+export async function getOrderConfirmation(
+  orderId: string | number | null | undefined,
+  orderKey: string | null | undefined,
+): Promise<StorefrontOrderConfirmation | null> {
+  const normalizedId =
+    typeof orderId === "number"
+      ? orderId
+      : typeof orderId === "string" && Number.isFinite(Number(orderId))
+        ? Number(orderId)
+        : 0;
+  const normalizedKey = typeof orderKey === "string" ? orderKey.trim() : "";
+  const baseUrl = getWooStoreBaseUrl();
+
+  if (!baseUrl || normalizedId <= 0 || !normalizedKey) {
+    return null;
+  }
+
+  const url = new URL("/wp-json/aesthetics-link/v1/orders/confirmation", baseUrl);
+  url.searchParams.set("order_id", String(normalizedId));
+  url.searchParams.set("key", normalizedKey);
+
+  const response = await fetch(url.toString(), {
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+
+  if (response.status === 404 || response.status === 400) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Order confirmation request failed (${response.status})`);
+  }
+
+  const payload = (await response.json()) as StorefrontOrderConfirmation | null;
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  return payload;
 }
 
 export async function getStorefrontNavigation(): Promise<StorefrontNavigation> {
