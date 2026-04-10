@@ -83,3 +83,25 @@ export type WholesalePricesResponse = {
   isWholesaleViewer: boolean;
   prices: Record<string, WholesalePriceEntry>;
 };
+
+export type AuthOrderSummary = {
+  orderId: number;
+  orderNumber: string;
+  status: string;
+  statusLabel: string;
+  createdAt: string;
+  paymentMethod: string;
+  itemCount: number;
+  total: string;
+  hasReceipt: boolean;
+  receiptToken: string;
+  previewItems: Array<{
+    name: string;
+    quantity: number;
+  }>;
+};
+
+export type AuthOrdersResponse = {
+  orders: AuthOrderSummary[];
+  total: number;
+};

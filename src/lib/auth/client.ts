@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  AuthOrdersResponse,
   AuthResponse,
   LoginPayload,
   RegisterPayload,
@@ -97,6 +98,11 @@ export async function resetPassword(payload: ResetPasswordPayload): Promise<Auth
 
 export async function getMe(): Promise<AuthResponse> {
   return request<AuthResponse>("/api/auth/me");
+}
+
+export async function getOrders(limit = 12): Promise<AuthOrdersResponse> {
+  const normalized = Number.isFinite(limit) ? Math.max(1, Math.min(24, Math.floor(limit))) : 12;
+  return request<AuthOrdersResponse>(`/api/auth/orders?limit=${normalized}`);
 }
 
 export async function logout(): Promise<{ ok: true }> {

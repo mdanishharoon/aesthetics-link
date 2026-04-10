@@ -1265,6 +1265,89 @@ function al_b2b_map_order_line_item($item) {
 	);
 }
 
+function al_b2b_map_order_summary($order) {
+	if (!$order || !is_a($order, 'WC_Order')) {
+		return null;
+	}
+
+	$currency = method_exists($order, 'get_currency') ? (string) $order->get_currency() : '';
+	$line_items = array();
+
+	foreach ($order->get_items() as $item) {
+		if (!$item || !is_a($item, 'WC_Order_Item_Product')) {
+			continue;
+		}
+
+		$line_items[] = array(
+			'name' => (string) $item->get_name(),
+			'quantity' => (int) $item->get_quantity(),
+		);
+	}
+
+	$line_count = count($line_items);
+	$preview_items = array_slice($line_items, 0, 3);
+	$receipt_token = al_b2b_create_order_receipt_token($order);
+
+	return array(
+		'orderId' => (int) $order->get_id(),
+		'orderNumber' => (string) $order->get_order_number(),
+		'status' => (string) $order->get_status(),
+		'statusLabel' => function_exists('wc_get_order_status_name') ? wc_get_order_status_name($order->get_status()) : (string) $order->get_status(),
+		'createdAt' => method_exists($order, 'get_date_created') && $order->get_date_created() ? $order->get_date_created()->date_i18n('j M Y, g:i a') : '',
+		'paymentMethod' => method_exists($order, 'get_payment_method_title') ? (string) $order->get_payment_method_title() : '',
+		'itemCount' => $line_count,
+		'total' => al_b2b_format_order_money($order->get_total(), $currency),
+		'previewItems' => $preview_items,
+		'hasReceipt' => !empty($receipt_token),
+		'receiptToken' => $receipt_token,
+	);
+}
+
+function al_b2b_get_account_orders($request) {
+	$token = al_b2b_parse_bearer_token($request);
+	if (!$token) {
+		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
+	}
+
+	$user = al_b2b_get_user_from_token($token);
+	if (!$user) {
+		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	}
+
+	if (!function_exists('wc_get_orders') || !function_exists('wc_get_order_status_name')) {
+		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
+	}
+
+	$limit = (int) $request->get_param('limit');
+	if ($limit <= 0) {
+		$limit = 12;
+	}
+	$limit = min(24, $limit);
+
+	$orders = wc_get_orders(array(
+		'customer_id' => (int) $user->ID,
+		'limit' => $limit,
+		'orderby' => 'date',
+		'order' => 'DESC',
+		'return' => 'objects',
+	));
+
+	$mapped_orders = array();
+	if (is_array($orders)) {
+		foreach ($orders as $order) {
+			$mapped = al_b2b_map_order_summary($order);
+			if ($mapped) {
+				$mapped_orders[] = $mapped;
+			}
+		}
+	}
+
+	return rest_ensure_response(array(
+		'orders' => $mapped_orders,
+		'total' => count($mapped_orders),
+	));
+}
+
 function al_b2b_get_order_confirmation($request) {
 	$receipt_token = trim((string) $request->get_param('receipt'));
 	$order_id = 0;
@@ -1694,6 +1777,12 @@ function al_b2b_register_routes() {
 	register_rest_route('aesthetics-link/v1', '/auth/wholesale-prices', array(
 		'methods' => 'GET',
 		'callback' => 'al_b2b_get_wholesale_prices',
+		'permission_callback' => '__return_true',
+	));
+
+	register_rest_route('aesthetics-link/v1', '/auth/orders', array(
+		'methods' => 'GET',
+		'callback' => 'al_b2b_get_account_orders',
 		'permission_callback' => '__return_true',
 	));
 
