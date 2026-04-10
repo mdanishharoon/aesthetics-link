@@ -10,6 +10,7 @@ import { useAuth } from "@/components/AuthProvider";
 import {
   addCartItem,
   fetchCart,
+  getCachedCartSnapshot,
   removeCartItem,
   updateCartItemQuantity,
 } from "@/lib/storefront/client";
@@ -17,6 +18,47 @@ import type { StorefrontCart, StorefrontCatalogProduct } from "@/lib/storefront/
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+function normalizeFilterSlug(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function toFilterLabel(slug: string): string {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+function extractNavFilterOptions(
+  links: Array<{ href: string; label: string }>,
+  key: "concern" | "brand",
+): Array<{ slug: string; label: string }> {
+  const deduped = new Map<string, string>();
+
+  for (const link of links) {
+    if (!link?.href || !link?.label) continue;
+
+    let slug = "";
+    try {
+      const url = new URL(link.href, "https://storefront.local");
+      slug = normalizeFilterSlug(url.searchParams.get(key));
+    } catch {
+      slug = "";
+    }
+
+    if (!slug || deduped.has(slug)) continue;
+    deduped.set(slug, link.label);
+  }
+
+  return Array.from(deduped.entries()).map(([slug, label]) => ({ slug, label }));
+}
 
 const EMPTY_CART: StorefrontCart = {
   items: [],
@@ -128,7 +170,9 @@ function CartSidebar({
                     ) : null}
                     <div className="shop-cart-item__qty">
                       <button
-                        onClick={() => onQty(item.key, Math.max(1, item.quantity - 1))}
+                        onClick={() =>
+                          item.quantity <= 1 ? void onRemove(item.key) : void onQty(item.key, item.quantity - 1)
+                        }
                         aria-label="Decrease"
                         disabled={busy}
                       >
@@ -323,65 +367,15 @@ export default function ProductsClient({
   const [activeBrand, setActiveBrand] = useState(initialBrand);
   const [cartOpen, setCartOpen] = useState(false);
 
-  const normalizeFilterSlug = (value: string | null | undefined): string => {
-    if (!value) {
-      return "";
-    }
-
-    return value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  };
-
-  const toFilterLabel = (slug: string): string =>
-    slug
-      .split("-")
-      .filter(Boolean)
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-      .join(" ");
-
-  const extractNavFilterOptions = useMemo(() => {
-    return (
-      links: Array<{ href: string; label: string }>,
-      key: "concern" | "brand",
-    ): Array<{ slug: string; label: string }> => {
-      const deduped = new Map<string, string>();
-
-      for (const link of links) {
-        if (!link?.href || !link?.label) {
-          continue;
-        }
-
-        let slug = "";
-        try {
-          const url = new URL(link.href, "https://storefront.local");
-          slug = normalizeFilterSlug(url.searchParams.get(key));
-        } catch {
-          slug = "";
-        }
-
-        if (!slug || deduped.has(slug)) {
-          continue;
-        }
-
-        deduped.set(slug, link.label);
-      }
-
-      return Array.from(deduped.entries()).map(([slug, label]) => ({ slug, label }));
-    };
-  }, []);
-
   const concernFilters = useMemo(() => {
     const links = navigation?.concerns ?? [];
     return extractNavFilterOptions(links, "concern");
-  }, [navigation, extractNavFilterOptions]);
+  }, [navigation]);
 
   const brandFilters = useMemo(() => {
     const links = navigation?.brands ?? [];
     return extractNavFilterOptions(links, "brand");
-  }, [navigation, extractNavFilterOptions]);
+  }, [navigation]);
 
   const productIds = useMemo(
     () => initialProducts.map((product) => product.id).filter((id) => Number.isInteger(id) && id > 0),
@@ -557,14 +551,57 @@ export default function ProductsClient({
   useEffect(() => {
     setActiveBrand(initialBrand);
   }, [initialBrand]);
+  const [initialCachedCart] = useState<StorefrontCart | null>(() => getCachedCartSnapshot());
   const cartQuery = useQuery({
     queryKey: ["storefront", "cart"],
     queryFn: fetchCart,
-    initialData: EMPTY_CART,
+    initialData: initialCachedCart ?? EMPTY_CART,
   });
 
   const addCartMutation = useMutation({
-    mutationFn: (productId: number) => addCartItem(productId, 1),
+    mutationFn: ({ product }: { product: StorefrontCatalogProduct }) => addCartItem(product.id, 1),
+    onMutate: async ({ product }) => {
+      await queryClient.cancelQueries({ queryKey: ["storefront", "cart"] });
+      const snapshot = queryClient.getQueryData<StorefrontCart>(["storefront", "cart"]);
+      const current = snapshot ?? EMPTY_CART;
+      const existingItem = current.items.find((item) => item.productId === product.id);
+      const optimistic: StorefrontCart = existingItem
+        ? {
+            ...current,
+            itemCount: current.itemCount + 1,
+            items: current.items.map((item) =>
+              item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+            ),
+          }
+        : {
+            ...current,
+            itemCount: current.itemCount + 1,
+            items: [
+              ...current.items,
+              {
+                key: `optimistic-${product.id}`,
+                productId: product.id,
+                slug: product.slug,
+                name: product.name,
+                shortName: product.shortName,
+                quantity: 1,
+                price: product.retailPrice ?? product.price,
+                lineTotal: product.retailPrice ?? product.price,
+                variations: [],
+                image: product.image,
+                imageAlt: product.imageAlt,
+                accentBg: product.accentBg,
+              },
+            ],
+          };
+      queryClient.setQueryData(["storefront", "cart"], optimistic);
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(["storefront", "cart"], context.snapshot);
+      }
+    },
     onSuccess: (nextCart) => {
       queryClient.setQueryData(["storefront", "cart"], nextCart);
     },
@@ -572,6 +609,24 @@ export default function ProductsClient({
 
   const updateCartMutation = useMutation({
     mutationFn: ({ key, quantity }: { key: string; quantity: number }) => updateCartItemQuantity(key, quantity),
+    onMutate: async ({ key, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: ["storefront", "cart"] });
+      const snapshot = queryClient.getQueryData<StorefrontCart>(["storefront", "cart"]);
+      if (snapshot) {
+        const optimistic: StorefrontCart = {
+          ...snapshot,
+          items: snapshot.items.map((item) => (item.key === key ? { ...item, quantity } : item)),
+          itemCount: snapshot.items.reduce((sum, item) => sum + (item.key === key ? quantity : item.quantity), 0),
+        };
+        queryClient.setQueryData(["storefront", "cart"], optimistic);
+      }
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(["storefront", "cart"], context.snapshot);
+      }
+    },
     onSuccess: (nextCart) => {
       queryClient.setQueryData(["storefront", "cart"], nextCart);
     },
@@ -579,6 +634,25 @@ export default function ProductsClient({
 
   const removeCartMutation = useMutation({
     mutationFn: (key: string) => removeCartItem(key),
+    onMutate: async (key) => {
+      await queryClient.cancelQueries({ queryKey: ["storefront", "cart"] });
+      const snapshot = queryClient.getQueryData<StorefrontCart>(["storefront", "cart"]);
+      if (snapshot) {
+        const removed = snapshot.items.find((item) => item.key === key);
+        const optimistic: StorefrontCart = {
+          ...snapshot,
+          items: snapshot.items.filter((item) => item.key !== key),
+          itemCount: snapshot.itemCount - (removed?.quantity ?? 1),
+        };
+        queryClient.setQueryData(["storefront", "cart"], optimistic);
+      }
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(["storefront", "cart"], context.snapshot);
+      }
+    },
     onSuccess: (nextCart) => {
       queryClient.setQueryData(["storefront", "cart"], nextCart);
     },
@@ -661,7 +735,7 @@ export default function ProductsClient({
 
   async function handleAddToCart(product: StorefrontCatalogProduct): Promise<void> {
     setCartOpen(true);
-    await addCartMutation.mutateAsync(product.id);
+    await addCartMutation.mutateAsync({ product });
   }
 
   async function handleRemoveFromCart(key: string): Promise<void> {

@@ -10,23 +10,23 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-const AL_B2B_SESSION_TABLE = 'al_b2b_sessions';
-const AL_B2B_AUDIT_TABLE = 'al_b2b_audit_log';
-const AL_B2B_CLEANUP_EVENT = 'al_b2b_cleanup_sessions_event';
+defined('AL_B2B_SESSION_TABLE')              || define('AL_B2B_SESSION_TABLE',              'al_b2b_sessions');
+defined('AL_B2B_AUDIT_TABLE')                || define('AL_B2B_AUDIT_TABLE',                'al_b2b_audit_log');
+defined('AL_B2B_CLEANUP_EVENT')              || define('AL_B2B_CLEANUP_EVENT',              'al_b2b_cleanup_sessions_event');
 
-const AL_B2B_ACCOUNT_TYPE_META = 'al_account_type';
-const AL_B2B_CLINIC_STATUS_META = 'al_clinic_status';
-const AL_B2B_BUSINESS_INFO_META = 'al_business_info';
-const AL_B2B_EMAIL_VERIFIED_META = 'al_email_verified';
-const AL_B2B_EMAIL_VERIFY_HASH_META = 'al_email_verification_hash';
-const AL_B2B_EMAIL_VERIFY_EXPIRES_META = 'al_email_verification_expires';
-const AL_B2B_PASSWORD_RESET_HASH_META = 'al_password_reset_hash';
-const AL_B2B_PASSWORD_RESET_EXPIRES_META = 'al_password_reset_expires';
+defined('AL_B2B_ACCOUNT_TYPE_META')          || define('AL_B2B_ACCOUNT_TYPE_META',          'al_account_type');
+defined('AL_B2B_CLINIC_STATUS_META')         || define('AL_B2B_CLINIC_STATUS_META',         'al_clinic_status');
+defined('AL_B2B_BUSINESS_INFO_META')         || define('AL_B2B_BUSINESS_INFO_META',         'al_business_info');
+defined('AL_B2B_EMAIL_VERIFIED_META')        || define('AL_B2B_EMAIL_VERIFIED_META',        'al_email_verified');
+defined('AL_B2B_EMAIL_VERIFY_HASH_META')     || define('AL_B2B_EMAIL_VERIFY_HASH_META',     'al_email_verification_hash');
+defined('AL_B2B_EMAIL_VERIFY_EXPIRES_META')  || define('AL_B2B_EMAIL_VERIFY_EXPIRES_META',  'al_email_verification_expires');
+defined('AL_B2B_PASSWORD_RESET_HASH_META')   || define('AL_B2B_PASSWORD_RESET_HASH_META',   'al_password_reset_hash');
+defined('AL_B2B_PASSWORD_RESET_EXPIRES_META') || define('AL_B2B_PASSWORD_RESET_EXPIRES_META', 'al_password_reset_expires');
 
-const AL_B2B_ADMIN_NONCE_ACTION = 'al_b2b_clinic_decision';
-const AL_B2B_VERIFY_TTL = 2 * DAY_IN_SECONDS;
-const AL_B2B_RESET_TTL = HOUR_IN_SECONDS;
-const AL_B2B_SESSION_TTL = 30 * DAY_IN_SECONDS;
+defined('AL_B2B_ADMIN_NONCE_ACTION')         || define('AL_B2B_ADMIN_NONCE_ACTION',         'al_b2b_clinic_decision');
+defined('AL_B2B_VERIFY_TTL')                 || define('AL_B2B_VERIFY_TTL',                 2 * DAY_IN_SECONDS);
+defined('AL_B2B_RESET_TTL')                  || define('AL_B2B_RESET_TTL',                  HOUR_IN_SECONDS);
+defined('AL_B2B_SESSION_TTL')                || define('AL_B2B_SESSION_TTL',                30 * DAY_IN_SECONDS);
 
 register_activation_hook(__FILE__, 'al_b2b_activate');
 register_deactivation_hook(__FILE__, 'al_b2b_deactivate');
@@ -643,6 +643,25 @@ function al_b2b_parse_bearer_token($request) {
 	return $token ? $token : null;
 }
 
+/**
+ * Authenticate a REST request via Bearer token.
+ *
+ * @return WP_User|WP_Error  The authenticated user, or a WP_Error (401).
+ */
+function al_b2b_authenticate_request($request) {
+	$token = al_b2b_parse_bearer_token($request);
+	if (!$token) {
+		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
+	}
+
+	$user = al_b2b_get_user_from_token($token);
+	if (!$user) {
+		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	}
+
+	return $user;
+}
+
 function al_b2b_issue_session($user_id) {
 	global $wpdb;
 
@@ -746,13 +765,7 @@ function al_b2b_decode_cart_token_payload($cart_token) {
 		return null;
 	}
 
-	$b64 = $parts[1];
-	$remainder = strlen($b64) % 4;
-	if ($remainder) {
-		$b64 .= str_repeat('=', 4 - $remainder);
-	}
-
-	$json = base64_decode(strtr($b64, '-_', '+/'));
+	$json = al_b2b_base64url_decode($parts[1]);
 	if (!$json) {
 		return null;
 	}
@@ -1026,77 +1039,12 @@ function al_b2b_sync_wc_cart_from_store_token($cart_token, $bridge_user_id = 0) 
 	}
 }
 
-function al_b2b_maybe_handle_checkout_bridge() {
-	$encoded_payload = isset($_GET['al_b2b_checkout_bridge']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		? wp_unslash($_GET['al_b2b_checkout_bridge']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		: '';
-	$signature = isset($_GET['sig']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		? wp_unslash($_GET['sig']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		: '';
-
-	if (!$encoded_payload || !$signature) {
-		return;
-	}
-
+/**
+ * Shared bridge execution: parse → sync cart → authenticate → redirect.
+ * Both the template_redirect hook and the REST endpoint funnel through here.
+ */
+function al_b2b_execute_checkout_bridge($encoded_payload, $signature) {
 	$checkout_url = function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout');
-	$failure_url = al_b2b_get_checkout_bridge_failure_url('bridge_invalid');
-	try {
-		$payload = al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature);
-
-		if (!$payload || !isset($payload['cartToken'])) {
-			wp_safe_redirect($failure_url);
-			exit;
-		}
-
-		$bridge_user_id = isset($payload['userId']) ? (int) $payload['userId'] : 0;
-
-		$sync_result = al_b2b_sync_wc_cart_from_store_token(
-			$payload['cartToken'],
-			$bridge_user_id
-		);
-		if (empty($sync_result['ok'])) {
-			al_b2b_log_checkout_bridge_error('Bridge cart sync did not complete successfully.', array(
-				'error_code' => isset($sync_result['error_code']) ? $sync_result['error_code'] : 'bridge_sync_failed',
-				'source_line_count' => isset($sync_result['source_line_count']) ? $sync_result['source_line_count'] : 0,
-				'source_quantity_total' => isset($sync_result['source_quantity_total']) ? $sync_result['source_quantity_total'] : 0,
-				'final_quantity_total' => isset($sync_result['final_quantity_total']) ? $sync_result['final_quantity_total'] : 0,
-				'failed_lines' => isset($sync_result['failed_lines']) ? $sync_result['failed_lines'] : 0,
-			));
-			wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url(
-				isset($sync_result['error_code']) ? $sync_result['error_code'] : 'bridge_sync_failed'
-			));
-			exit;
-		}
-
-		// Log the user into WordPress so they arrive at checkout already authenticated.
-		// For guests (no userId), WooCommerce guest checkout handles the session.
-		if ($bridge_user_id > 0) {
-			wp_set_current_user($bridge_user_id);
-			wp_set_auth_cookie($bridge_user_id, true);
-		}
-
-		wp_safe_redirect($checkout_url);
-		exit;
-	} catch (Throwable $error) {
-		al_b2b_log_checkout_bridge_error('Checkout bridge request crashed.', array(
-			'message' => $error->getMessage(),
-			'file' => $error->getFile(),
-			'line' => $error->getLine(),
-		));
-		wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url('bridge_crashed'));
-		exit;
-	}
-}
-
-function al_b2b_rest_checkout_bridge(WP_REST_Request $request) {
-	$encoded_payload = trim((string) ($request->get_param('al_b2b_checkout_bridge') ?? ''));
-	$signature = trim((string) ($request->get_param('sig') ?? ''));
-	$checkout_url = function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout');
-
-	if (!$encoded_payload || !$signature) {
-		wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url('bridge_invalid'));
-		exit;
-	}
 
 	try {
 		$payload = al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature);
@@ -1110,8 +1058,12 @@ function al_b2b_rest_checkout_bridge(WP_REST_Request $request) {
 
 		$sync_result = al_b2b_sync_wc_cart_from_store_token($payload['cartToken'], $bridge_user_id);
 		if (empty($sync_result['ok'])) {
-			al_b2b_log_checkout_bridge_error('REST bridge cart sync did not complete successfully.', array(
-				'error_code' => isset($sync_result['error_code']) ? $sync_result['error_code'] : 'bridge_sync_failed',
+			al_b2b_log_checkout_bridge_error('Bridge cart sync did not complete successfully.', array(
+				'error_code'            => isset($sync_result['error_code'])            ? $sync_result['error_code']            : 'bridge_sync_failed',
+				'source_line_count'     => isset($sync_result['source_line_count'])     ? $sync_result['source_line_count']     : 0,
+				'source_quantity_total' => isset($sync_result['source_quantity_total']) ? $sync_result['source_quantity_total'] : 0,
+				'final_quantity_total'  => isset($sync_result['final_quantity_total'])  ? $sync_result['final_quantity_total']  : 0,
+				'failed_lines'          => isset($sync_result['failed_lines'])          ? $sync_result['failed_lines']          : 0,
 			));
 			wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url(
 				isset($sync_result['error_code']) ? $sync_result['error_code'] : 'bridge_sync_failed'
@@ -1119,22 +1071,51 @@ function al_b2b_rest_checkout_bridge(WP_REST_Request $request) {
 			exit;
 		}
 
+		// Log the user into WordPress so they arrive at checkout already authenticated.
+		// For guests (no userId), WooCommerce guest checkout handles the session.
 		if ($bridge_user_id > 0) {
 			wp_set_current_user($bridge_user_id);
-			wp_set_auth_cookie($bridge_user_id, true);
+			wp_set_auth_cookie($bridge_user_id, false);
 		}
 
 		wp_safe_redirect($checkout_url);
 		exit;
 	} catch (Throwable $error) {
-		al_b2b_log_checkout_bridge_error('REST checkout bridge crashed.', array(
+		al_b2b_log_checkout_bridge_error('Checkout bridge crashed.', array(
 			'message' => $error->getMessage(),
-			'file' => $error->getFile(),
-			'line' => $error->getLine(),
+			'file'    => $error->getFile(),
+			'line'    => $error->getLine(),
 		));
 		wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url('bridge_crashed'));
 		exit;
 	}
+}
+
+function al_b2b_maybe_handle_checkout_bridge() {
+	$encoded_payload = isset($_GET['al_b2b_checkout_bridge']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		? wp_unslash($_GET['al_b2b_checkout_bridge']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		: '';
+	$signature = isset($_GET['sig']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		? wp_unslash($_GET['sig']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		: '';
+
+	if (!$encoded_payload || !$signature) {
+		return;
+	}
+
+	al_b2b_execute_checkout_bridge($encoded_payload, $signature);
+}
+
+function al_b2b_rest_checkout_bridge(WP_REST_Request $request) {
+	$encoded_payload = trim((string) ($request->get_param('al_b2b_checkout_bridge') ?? ''));
+	$signature       = trim((string) ($request->get_param('sig') ?? ''));
+
+	if (!$encoded_payload || !$signature) {
+		wp_safe_redirect(al_b2b_get_checkout_bridge_failure_url('bridge_invalid'));
+		exit;
+	}
+
+	al_b2b_execute_checkout_bridge($encoded_payload, $signature);
 }
 
 function al_b2b_get_country_label($country_code) {
@@ -1152,19 +1133,32 @@ function al_b2b_get_country_label($country_code) {
 
 function al_b2b_map_order_address($order, $type) {
 	$type = $type === 'shipping' ? 'shipping' : 'billing';
-	$getter_prefix = 'get_' . $type . '_';
 
-	$first_name = is_callable(array($order, $getter_prefix . 'first_name')) ? (string) $order->{$getter_prefix . 'first_name'}() : '';
-	$last_name = is_callable(array($order, $getter_prefix . 'last_name')) ? (string) $order->{$getter_prefix . 'last_name'}() : '';
-	$company = is_callable(array($order, $getter_prefix . 'company')) ? (string) $order->{$getter_prefix . 'company'}() : '';
-	$address_1 = is_callable(array($order, $getter_prefix . 'address_1')) ? (string) $order->{$getter_prefix . 'address_1'}() : '';
-	$address_2 = is_callable(array($order, $getter_prefix . 'address_2')) ? (string) $order->{$getter_prefix . 'address_2'}() : '';
-	$city = is_callable(array($order, $getter_prefix . 'city')) ? (string) $order->{$getter_prefix . 'city'}() : '';
-	$state = is_callable(array($order, $getter_prefix . 'state')) ? (string) $order->{$getter_prefix . 'state'}() : '';
-	$postcode = is_callable(array($order, $getter_prefix . 'postcode')) ? (string) $order->{$getter_prefix . 'postcode'}() : '';
-	$country = is_callable(array($order, $getter_prefix . 'country')) ? (string) $order->{$getter_prefix . 'country'}() : '';
-	$email = $type === 'billing' && is_callable(array($order, 'get_billing_email')) ? (string) $order->get_billing_email() : '';
-	$phone = $type === 'billing' && is_callable(array($order, 'get_billing_phone')) ? (string) $order->get_billing_phone() : '';
+	if ($type === 'billing') {
+		$first_name = method_exists($order, 'get_billing_first_name') ? (string) $order->get_billing_first_name() : '';
+		$last_name  = method_exists($order, 'get_billing_last_name')  ? (string) $order->get_billing_last_name()  : '';
+		$company    = method_exists($order, 'get_billing_company')    ? (string) $order->get_billing_company()    : '';
+		$address_1  = method_exists($order, 'get_billing_address_1')  ? (string) $order->get_billing_address_1()  : '';
+		$address_2  = method_exists($order, 'get_billing_address_2')  ? (string) $order->get_billing_address_2()  : '';
+		$city       = method_exists($order, 'get_billing_city')       ? (string) $order->get_billing_city()       : '';
+		$state      = method_exists($order, 'get_billing_state')      ? (string) $order->get_billing_state()      : '';
+		$postcode   = method_exists($order, 'get_billing_postcode')   ? (string) $order->get_billing_postcode()   : '';
+		$country    = method_exists($order, 'get_billing_country')    ? (string) $order->get_billing_country()    : '';
+		$email      = method_exists($order, 'get_billing_email')      ? (string) $order->get_billing_email()      : '';
+		$phone      = method_exists($order, 'get_billing_phone')      ? (string) $order->get_billing_phone()      : '';
+	} else {
+		$first_name = method_exists($order, 'get_shipping_first_name') ? (string) $order->get_shipping_first_name() : '';
+		$last_name  = method_exists($order, 'get_shipping_last_name')  ? (string) $order->get_shipping_last_name()  : '';
+		$company    = method_exists($order, 'get_shipping_company')    ? (string) $order->get_shipping_company()    : '';
+		$address_1  = method_exists($order, 'get_shipping_address_1')  ? (string) $order->get_shipping_address_1()  : '';
+		$address_2  = method_exists($order, 'get_shipping_address_2')  ? (string) $order->get_shipping_address_2()  : '';
+		$city       = method_exists($order, 'get_shipping_city')       ? (string) $order->get_shipping_city()       : '';
+		$state      = method_exists($order, 'get_shipping_state')      ? (string) $order->get_shipping_state()      : '';
+		$postcode   = method_exists($order, 'get_shipping_postcode')   ? (string) $order->get_shipping_postcode()   : '';
+		$country    = method_exists($order, 'get_shipping_country')    ? (string) $order->get_shipping_country()    : '';
+		$email      = '';
+		$phone      = '';
+	}
 
 	$lines = array_values(array_filter(array(
 		trim($company),
@@ -1438,42 +1432,45 @@ function al_b2b_build_order_confirmation_payload($order) {
 	);
 }
 
-function al_b2b_get_account_orders($request) {
-	$token = al_b2b_parse_bearer_token($request);
-	if (!$token) {
-		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
-	}
-
-	$user = al_b2b_get_user_from_token($token);
-	if (!$user) {
-		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
-	}
-
-	if (!function_exists('wc_get_orders') || !function_exists('wc_get_order_status_name')) {
-		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
-	}
-
-	$limit = (int) $request->get_param('limit');
-	if ($limit <= 0) {
-		$limit = 12;
-	}
-	$limit = min(24, $limit);
+/**
+ * Fetch WooCommerce orders for a user, with limit clamping.
+ *
+ * @param int $user_id
+ * @param int $limit  Raw limit from the request (0 or negative → default 12, max 24).
+ * @return WC_Order[]
+ */
+function al_b2b_fetch_user_orders($user_id, $limit) {
+	$limit = (int) $limit;
+	$limit = $limit > 0 ? min(24, $limit) : 12;
 
 	$orders = wc_get_orders(array(
-		'customer_id' => (int) $user->ID,
+		'customer_id' => (int) $user_id,
 		'limit' => $limit,
 		'orderby' => 'date',
 		'order' => 'DESC',
 		'return' => 'objects',
 	));
 
+	return is_array($orders) ? $orders : array();
+}
+
+function al_b2b_get_account_orders($request) {
+	$user = al_b2b_authenticate_request($request);
+	if (is_wp_error($user)) {
+		return $user;
+	}
+
+	if (!function_exists('wc_get_orders') || !function_exists('wc_get_order_status_name')) {
+		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
+	}
+
+	$orders = al_b2b_fetch_user_orders($user->ID, (int) $request->get_param('limit'));
+
 	$mapped_orders = array();
-	if (is_array($orders)) {
-		foreach ($orders as $order) {
-			$mapped = al_b2b_map_order_summary($order);
-			if ($mapped) {
-				$mapped_orders[] = $mapped;
-			}
+	foreach ($orders as $order) {
+		$mapped = al_b2b_map_order_summary($order);
+		if ($mapped) {
+			$mapped_orders[] = $mapped;
 		}
 	}
 
@@ -1484,49 +1481,30 @@ function al_b2b_get_account_orders($request) {
 }
 
 function al_b2b_get_account_dashboard($request) {
-	$token = al_b2b_parse_bearer_token($request);
-	if (!$token) {
-		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
-	}
-
-	$user = al_b2b_get_user_from_token($token);
-	if (!$user) {
-		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	$user = al_b2b_authenticate_request($request);
+	if (is_wp_error($user)) {
+		return $user;
 	}
 
 	if (!function_exists('wc_get_orders') || !function_exists('wc_get_order_status_name')) {
 		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
 	}
 
-	$limit = (int) $request->get_param('limit');
-	if ($limit <= 0) {
-		$limit = 12;
-	}
-	$limit = min(24, $limit);
-
-	$orders = wc_get_orders(array(
-		'customer_id' => (int) $user->ID,
-		'limit' => $limit,
-		'orderby' => 'date',
-		'order' => 'DESC',
-		'return' => 'objects',
-	));
+	$orders = al_b2b_fetch_user_orders($user->ID, (int) $request->get_param('limit'));
 
 	$mapped_orders = array();
 	$initial_order_detail = null;
 
-	if (is_array($orders)) {
-		foreach ($orders as $index => $order) {
-			$mapped = al_b2b_map_order_summary($order);
-			if ($mapped) {
-				$mapped_orders[] = $mapped;
-			}
+	foreach ($orders as $index => $order) {
+		$mapped = al_b2b_map_order_summary($order);
+		if ($mapped) {
+			$mapped_orders[] = $mapped;
+		}
 
-			if ($index === 0 && !$initial_order_detail) {
-				$payload = al_b2b_build_order_confirmation_payload($order);
-				if ($payload) {
-					$initial_order_detail = $payload;
-				}
+		if ($index === 0 && !$initial_order_detail) {
+			$payload = al_b2b_build_order_confirmation_payload($order);
+			if ($payload) {
+				$initial_order_detail = $payload;
 			}
 		}
 	}
@@ -1540,14 +1518,9 @@ function al_b2b_get_account_dashboard($request) {
 }
 
 function al_b2b_get_authenticated_order_detail($request) {
-	$token = al_b2b_parse_bearer_token($request);
-	if (!$token) {
-		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
-	}
-
-	$user = al_b2b_get_user_from_token($token);
-	if (!$user) {
-		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	$user = al_b2b_authenticate_request($request);
+	if (is_wp_error($user)) {
+		return $user;
 	}
 
 	if (!function_exists('wc_get_order') || !function_exists('wc_get_order_status_name')) {
@@ -1714,14 +1687,9 @@ function al_b2b_map_user($user) {
 }
 
 function al_b2b_update_profile($request) {
-	$token = al_b2b_parse_bearer_token($request);
-	if (!$token) {
-		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
-	}
-
-	$user = al_b2b_get_user_from_token($token);
-	if (!$user) {
-		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	$user = al_b2b_authenticate_request($request);
+	if (is_wp_error($user)) {
+		return $user;
 	}
 
 	$body = al_b2b_get_json_body($request);
@@ -2305,14 +2273,9 @@ function al_b2b_login_user($request) {
 }
 
 function al_b2b_get_me($request) {
-	$token = al_b2b_parse_bearer_token($request);
-	if (!$token) {
-		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
-	}
-
-	$user = al_b2b_get_user_from_token($token);
-	if (!$user) {
-		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	$user = al_b2b_authenticate_request($request);
+	if (is_wp_error($user)) {
+		return $user;
 	}
 
 	return rest_ensure_response(array(
@@ -2476,14 +2439,9 @@ function al_b2b_normalize_price_number($value) {
 }
 
 function al_b2b_get_wholesale_prices($request) {
-	$token = al_b2b_parse_bearer_token($request);
-	if (!$token) {
-		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
-	}
-
-	$user = al_b2b_get_user_from_token($token);
-	if (!$user) {
-		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	$user = al_b2b_authenticate_request($request);
+	if (is_wp_error($user)) {
+		return $user;
 	}
 
 	if (!function_exists('wc_get_product') || !function_exists('wc_price')) {

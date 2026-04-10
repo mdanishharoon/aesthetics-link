@@ -73,25 +73,57 @@ export default function CartPage() {
   });
 
   const quantityMutation = useMutation({
-    mutationFn: ({ key, quantity }: { key: string; quantity: number }) =>
-      updateCartItemQuantity(key, Math.max(1, quantity)),
+    mutationFn: ({ key, quantity }: { key: string; quantity: number }) => updateCartItemQuantity(key, quantity),
+    onMutate: async ({ key, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: ["storefront", "cart"] });
+      const snapshot = queryClient.getQueryData<StorefrontCart>(["storefront", "cart"]);
+      if (snapshot) {
+        const optimistic: StorefrontCart = {
+          ...snapshot,
+          items: snapshot.items.map((item) => (item.key === key ? { ...item, quantity } : item)),
+          itemCount: snapshot.items.reduce((sum, item) => sum + (item.key === key ? quantity : item.quantity), 0),
+        };
+        queryClient.setQueryData(["storefront", "cart"], optimistic);
+      }
+      return { snapshot };
+    },
+    onError: (mutationError, _vars, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(["storefront", "cart"], context.snapshot);
+      }
+      setError(mutationError instanceof Error ? mutationError.message : "Unable to update your cart.");
+    },
     onSuccess: (nextCart) => {
       queryClient.setQueryData(["storefront", "cart"], nextCart);
       setError(null);
-    },
-    onError: (mutationError) => {
-      setError(mutationError instanceof Error ? mutationError.message : "Unable to update your cart.");
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (key: string) => removeCartItem(key),
+    onMutate: async (key) => {
+      await queryClient.cancelQueries({ queryKey: ["storefront", "cart"] });
+      const snapshot = queryClient.getQueryData<StorefrontCart>(["storefront", "cart"]);
+      if (snapshot) {
+        const removed = snapshot.items.find((item) => item.key === key);
+        const optimistic: StorefrontCart = {
+          ...snapshot,
+          items: snapshot.items.filter((item) => item.key !== key),
+          itemCount: snapshot.itemCount - (removed?.quantity ?? 1),
+        };
+        queryClient.setQueryData(["storefront", "cart"], optimistic);
+      }
+      return { snapshot };
+    },
+    onError: (mutationError, _vars, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(["storefront", "cart"], context.snapshot);
+      }
+      setError(mutationError instanceof Error ? mutationError.message : "Unable to update your cart.");
+    },
     onSuccess: (nextCart) => {
       queryClient.setQueryData(["storefront", "cart"], nextCart);
       setError(null);
-    },
-    onError: (mutationError) => {
-      setError(mutationError instanceof Error ? mutationError.message : "Unable to update your cart.");
     },
   });
 
@@ -116,10 +148,12 @@ export default function CartPage() {
   }, []);
 
   async function handleQuantityChange(key: string, nextQuantity: number): Promise<void> {
-    if (busy) {
-      return;
+    if (busy) return;
+    if (nextQuantity <= 0) {
+      await removeMutation.mutateAsync(key);
+    } else {
+      await quantityMutation.mutateAsync({ key, quantity: nextQuantity });
     }
-    await quantityMutation.mutateAsync({ key, quantity: nextQuantity });
   }
 
   async function handleRemoveItem(key: string): Promise<void> {
