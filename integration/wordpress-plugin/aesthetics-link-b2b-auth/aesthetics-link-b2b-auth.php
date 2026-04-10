@@ -1303,6 +1303,141 @@ function al_b2b_map_order_summary($order) {
 	);
 }
 
+function al_b2b_normalize_lookup_value($value) {
+	$value = strtoupper(trim((string) $value));
+	return preg_replace('/[^A-Z0-9-]/', '', $value);
+}
+
+function al_b2b_map_user_address($user_id, $type, $email_fallback = '') {
+	$user_id = (int) $user_id;
+	$prefix = $type === 'shipping' ? 'shipping_' : 'billing_';
+	$first_name = (string) get_user_meta($user_id, $prefix . 'first_name', true);
+	$last_name = (string) get_user_meta($user_id, $prefix . 'last_name', true);
+	$company = (string) get_user_meta($user_id, $prefix . 'company', true);
+	$phone = (string) get_user_meta($user_id, $prefix . 'phone', true);
+	$email = $type === 'billing' ? (string) get_user_meta($user_id, $prefix . 'email', true) : '';
+	$address_1 = (string) get_user_meta($user_id, $prefix . 'address_1', true);
+	$address_2 = (string) get_user_meta($user_id, $prefix . 'address_2', true);
+	$city = (string) get_user_meta($user_id, $prefix . 'city', true);
+	$state = (string) get_user_meta($user_id, $prefix . 'state', true);
+	$postcode = (string) get_user_meta($user_id, $prefix . 'postcode', true);
+	$country = (string) get_user_meta($user_id, $prefix . 'country', true);
+	$name = trim($first_name . ' ' . $last_name);
+	$lines = array_values(array_filter(array(
+		$company,
+		$address_1,
+		$address_2,
+		trim($city . ($state ? ', ' . $state : '') . ($postcode ? ' ' . $postcode : '')),
+		$country,
+	)));
+
+	return array(
+		'firstName' => $first_name,
+		'lastName' => $last_name,
+		'name' => $name,
+		'company' => $company,
+		'phone' => $phone,
+		'email' => $email ? $email : ($type === 'billing' ? (string) $email_fallback : ''),
+		'address1' => $address_1,
+		'address2' => $address_2,
+		'city' => $city,
+		'state' => $state,
+		'postcode' => $postcode,
+		'country' => $country,
+		'lines' => $lines,
+	);
+}
+
+function al_b2b_sanitize_profile_address($raw, $type, $default_email) {
+	$raw = is_array($raw) ? $raw : array();
+
+	$address = array(
+		'first_name' => sanitize_text_field(isset($raw['firstName']) ? (string) $raw['firstName'] : ''),
+		'last_name' => sanitize_text_field(isset($raw['lastName']) ? (string) $raw['lastName'] : ''),
+		'company' => sanitize_text_field(isset($raw['company']) ? (string) $raw['company'] : ''),
+		'phone' => sanitize_text_field(isset($raw['phone']) ? (string) $raw['phone'] : ''),
+		'address_1' => sanitize_text_field(isset($raw['address1']) ? (string) $raw['address1'] : ''),
+		'address_2' => sanitize_text_field(isset($raw['address2']) ? (string) $raw['address2'] : ''),
+		'city' => sanitize_text_field(isset($raw['city']) ? (string) $raw['city'] : ''),
+		'state' => sanitize_text_field(isset($raw['state']) ? (string) $raw['state'] : ''),
+		'postcode' => sanitize_text_field(isset($raw['postcode']) ? (string) $raw['postcode'] : ''),
+		'country' => strtoupper(sanitize_text_field(isset($raw['country']) ? (string) $raw['country'] : '')),
+	);
+
+	if ($type === 'billing') {
+		$email = isset($raw['email']) ? sanitize_email((string) $raw['email']) : '';
+		$address['email'] = $email && is_email($email) ? $email : sanitize_email((string) $default_email);
+	}
+
+	return $address;
+}
+
+function al_b2b_update_profile_address($user_id, $type, $address) {
+	$user_id = (int) $user_id;
+	$address = is_array($address) ? $address : array();
+	$prefix = $type === 'shipping' ? 'shipping_' : 'billing_';
+
+	$fields = array(
+		'first_name',
+		'last_name',
+		'company',
+		'phone',
+		'address_1',
+		'address_2',
+		'city',
+		'state',
+		'postcode',
+		'country',
+	);
+
+	if ($type === 'billing') {
+		$fields[] = 'email';
+	}
+
+	foreach ($fields as $field) {
+		$value = isset($address[$field]) ? (string) $address[$field] : '';
+		update_user_meta($user_id, $prefix . $field, $value);
+	}
+}
+
+function al_b2b_build_order_confirmation_payload($order) {
+	if (!$order || !is_a($order, 'WC_Order') || !function_exists('wc_get_order_status_name')) {
+		return null;
+	}
+
+	$currency = method_exists($order, 'get_currency') ? (string) $order->get_currency() : '';
+	$items = array();
+
+	foreach ($order->get_items() as $item) {
+		$mapped_item = al_b2b_map_order_line_item($item);
+		if ($mapped_item) {
+			$items[] = $mapped_item;
+		}
+	}
+
+	$totals = array(
+		'subtotal' => al_b2b_format_order_money($order->get_subtotal(), $currency),
+		'shipping' => al_b2b_format_order_money($order->get_shipping_total(), $currency),
+		'tax' => al_b2b_format_order_money($order->get_total_tax(), $currency),
+		'total' => al_b2b_format_order_money($order->get_total(), $currency),
+	);
+
+	return array(
+		'orderId' => (int) $order->get_id(),
+		'orderNumber' => (string) $order->get_order_number(),
+		'status' => (string) $order->get_status(),
+		'statusLabel' => wc_get_order_status_name($order->get_status()),
+		'createdAt' => method_exists($order, 'get_date_created') && $order->get_date_created() ? $order->get_date_created()->date_i18n('j M Y, g:i a') : '',
+		'paymentMethod' => method_exists($order, 'get_payment_method_title') ? (string) $order->get_payment_method_title() : '',
+		'customerNote' => method_exists($order, 'get_customer_note') ? (string) $order->get_customer_note() : '',
+		'itemCount' => count($items),
+		'items' => $items,
+		'totals' => $totals,
+		'billingAddress' => al_b2b_map_order_address($order, 'billing'),
+		'shippingAddress' => al_b2b_map_order_address($order, 'shipping'),
+	);
+}
+
 function al_b2b_get_account_orders($request) {
 	$token = al_b2b_parse_bearer_token($request);
 	if (!$token) {
@@ -1348,6 +1483,100 @@ function al_b2b_get_account_orders($request) {
 	));
 }
 
+function al_b2b_get_authenticated_order_detail($request) {
+	$token = al_b2b_parse_bearer_token($request);
+	if (!$token) {
+		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
+	}
+
+	$user = al_b2b_get_user_from_token($token);
+	if (!$user) {
+		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	}
+
+	if (!function_exists('wc_get_order') || !function_exists('wc_get_order_status_name')) {
+		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
+	}
+
+	$order_id = (int) $request->get_param('orderId');
+	if ($order_id <= 0) {
+		return new WP_Error('invalid_order', 'Order id is required.', array('status' => 400));
+	}
+
+	$order = wc_get_order($order_id);
+	if (!$order) {
+		return new WP_Error('order_not_found', 'Order not found.', array('status' => 404));
+	}
+
+	if ((int) $order->get_customer_id() !== (int) $user->ID) {
+		return new WP_Error('forbidden_order', 'Order could not be verified.', array('status' => 404));
+	}
+
+	$payload = al_b2b_build_order_confirmation_payload($order);
+	if (!$payload) {
+		return new WP_Error('order_unavailable', 'Order details could not be loaded.', array('status' => 500));
+	}
+
+	return rest_ensure_response($payload);
+}
+
+function al_b2b_lookup_guest_order($request) {
+	$limit = al_b2b_guard_rate_limit('order_lookup', 12, 15 * MINUTE_IN_SECONDS);
+	if (is_wp_error($limit)) {
+		return $limit;
+	}
+
+	$body = al_b2b_get_json_body($request);
+	$email = isset($body['email']) ? sanitize_email((string) $body['email']) : '';
+	$order_number = isset($body['orderNumber']) ? sanitize_text_field((string) $body['orderNumber']) : '';
+
+	if (!$email || !is_email($email) || !$order_number) {
+		return new WP_Error('invalid_lookup', 'Order number and billing email are required.', array('status' => 400));
+	}
+
+	if (!function_exists('wc_get_orders') || !function_exists('wc_get_order_status_name')) {
+		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
+	}
+
+	$target = al_b2b_normalize_lookup_value($order_number);
+	$orders = wc_get_orders(array(
+		'billing_email' => $email,
+		'limit' => 20,
+		'orderby' => 'date',
+		'order' => 'DESC',
+		'return' => 'objects',
+	));
+
+	$matched_order = null;
+	if (is_array($orders)) {
+		foreach ($orders as $order) {
+			$candidate_number = al_b2b_normalize_lookup_value($order->get_order_number());
+			$candidate_id = al_b2b_normalize_lookup_value((string) $order->get_id());
+			if ($target === $candidate_number || $target === $candidate_id) {
+				$matched_order = $order;
+				break;
+			}
+		}
+	}
+
+	if (!$matched_order) {
+		return new WP_Error('order_lookup_failed', 'We could not match that order number and billing email.', array('status' => 404));
+	}
+
+	$payload = al_b2b_build_order_confirmation_payload($matched_order);
+	if (!$payload) {
+		return new WP_Error('order_unavailable', 'Order details could not be loaded.', array('status' => 500));
+	}
+
+	$receipt_token = al_b2b_create_order_receipt_token($matched_order);
+	$payload['hasReceipt'] = !empty($receipt_token);
+	$payload['receiptToken'] = $receipt_token;
+
+	return rest_ensure_response(array(
+		'order' => $payload,
+	));
+}
+
 function al_b2b_get_order_confirmation($request) {
 	$receipt_token = trim((string) $request->get_param('receipt'));
 	$order_id = 0;
@@ -1383,37 +1612,12 @@ function al_b2b_get_order_confirmation($request) {
 		return new WP_Error('invalid_order_key', 'Order confirmation could not be verified.', array('status' => 404));
 	}
 
-	$currency = method_exists($order, 'get_currency') ? (string) $order->get_currency() : '';
-	$items = array();
-
-	foreach ($order->get_items() as $item) {
-		$mapped_item = al_b2b_map_order_line_item($item);
-		if ($mapped_item) {
-			$items[] = $mapped_item;
-		}
+	$payload = al_b2b_build_order_confirmation_payload($order);
+	if (!$payload) {
+		return new WP_Error('order_unavailable', 'Order details could not be loaded.', array('status' => 500));
 	}
 
-	$totals = array(
-		'subtotal' => al_b2b_format_order_money($order->get_subtotal(), $currency),
-		'shipping' => al_b2b_format_order_money($order->get_shipping_total(), $currency),
-		'tax' => al_b2b_format_order_money($order->get_total_tax(), $currency),
-		'total' => al_b2b_format_order_money($order->get_total(), $currency),
-	);
-
-	return rest_ensure_response(array(
-		'orderId' => (int) $order->get_id(),
-		'orderNumber' => (string) $order->get_order_number(),
-		'status' => (string) $order->get_status(),
-		'statusLabel' => wc_get_order_status_name($order->get_status()),
-		'createdAt' => method_exists($order, 'get_date_created') && $order->get_date_created() ? $order->get_date_created()->date_i18n('j M Y, g:i a') : '',
-		'paymentMethod' => method_exists($order, 'get_payment_method_title') ? (string) $order->get_payment_method_title() : '',
-		'customerNote' => method_exists($order, 'get_customer_note') ? (string) $order->get_customer_note() : '',
-		'itemCount' => count($items),
-		'items' => $items,
-		'totals' => $totals,
-		'billingAddress' => al_b2b_map_order_address($order, 'billing'),
-		'shippingAddress' => al_b2b_map_order_address($order, 'shipping'),
-	));
+	return rest_ensure_response($payload);
 }
 
 function al_b2b_is_wholesale_approved_user($user) {
@@ -1446,9 +1650,90 @@ function al_b2b_map_user($user) {
 		'accountType' => $account_type === 'clinic' ? 'clinic' : 'retail',
 		'clinicStatus' => $clinic_status ? (string) $clinic_status : null,
 		'businessInfo' => $business_info,
+		'billingAddress' => al_b2b_map_user_address($user->ID, 'billing', $user->user_email),
+		'shippingAddress' => al_b2b_map_user_address($user->ID, 'shipping', $user->user_email),
 		'emailVerified' => al_b2b_is_email_verified($user->ID),
 		'wholesaleApproved' => al_b2b_is_wholesale_approved_user($user),
 	);
+}
+
+function al_b2b_update_profile($request) {
+	$token = al_b2b_parse_bearer_token($request);
+	if (!$token) {
+		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
+	}
+
+	$user = al_b2b_get_user_from_token($token);
+	if (!$user) {
+		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	}
+
+	$body = al_b2b_get_json_body($request);
+
+	$first_name = sanitize_text_field(isset($body['firstName']) ? (string) $body['firstName'] : $user->first_name);
+	$last_name = sanitize_text_field(isset($body['lastName']) ? (string) $body['lastName'] : $user->last_name);
+	$display_name = sanitize_text_field(isset($body['displayName']) ? (string) $body['displayName'] : $user->display_name);
+
+	if (!$display_name) {
+		$display_name = trim($first_name . ' ' . $last_name);
+	}
+	if (!$display_name) {
+		$display_name = $user->display_name;
+	}
+
+	$update_result = wp_update_user(array(
+		'ID' => (int) $user->ID,
+		'first_name' => $first_name,
+		'last_name' => $last_name,
+		'display_name' => $display_name,
+	));
+
+	if (is_wp_error($update_result)) {
+		return new WP_Error('profile_update_failed', 'Profile settings could not be updated.', array('status' => 500));
+	}
+
+	$billing_address = al_b2b_sanitize_profile_address(
+		isset($body['billingAddress']) ? $body['billingAddress'] : array(),
+		'billing',
+		$user->user_email
+	);
+	$shipping_address = al_b2b_sanitize_profile_address(
+		isset($body['shippingAddress']) ? $body['shippingAddress'] : array(),
+		'shipping',
+		$user->user_email
+	);
+
+	al_b2b_update_profile_address($user->ID, 'billing', $billing_address);
+	al_b2b_update_profile_address($user->ID, 'shipping', $shipping_address);
+
+	$account_type = get_user_meta($user->ID, AL_B2B_ACCOUNT_TYPE_META, true);
+	if ($account_type === 'clinic' && isset($body['businessInfo']) && is_array($body['businessInfo'])) {
+		$current_business_info = get_user_meta($user->ID, AL_B2B_BUSINESS_INFO_META, true);
+		if (!is_array($current_business_info)) {
+			$current_business_info = array();
+		}
+
+		$sanitized_business_info = array(
+			'clinicName' => sanitize_text_field(isset($body['businessInfo']['clinicName']) ? (string) $body['businessInfo']['clinicName'] : (isset($current_business_info['clinicName']) ? (string) $current_business_info['clinicName'] : '')),
+			'businessName' => sanitize_text_field(isset($body['businessInfo']['businessName']) ? (string) $body['businessInfo']['businessName'] : (isset($current_business_info['businessName']) ? (string) $current_business_info['businessName'] : '')),
+			'licenseNumber' => sanitize_text_field(isset($body['businessInfo']['licenseNumber']) ? (string) $body['businessInfo']['licenseNumber'] : (isset($current_business_info['licenseNumber']) ? (string) $current_business_info['licenseNumber'] : '')),
+			'taxId' => sanitize_text_field(isset($body['businessInfo']['taxId']) ? (string) $body['businessInfo']['taxId'] : (isset($current_business_info['taxId']) ? (string) $current_business_info['taxId'] : '')),
+			'website' => esc_url_raw(isset($body['businessInfo']['website']) ? (string) $body['businessInfo']['website'] : (isset($current_business_info['website']) ? (string) $current_business_info['website'] : '')),
+			'phone' => sanitize_text_field(isset($body['businessInfo']['phone']) ? (string) $body['businessInfo']['phone'] : (isset($current_business_info['phone']) ? (string) $current_business_info['phone'] : '')),
+		);
+
+		update_user_meta($user->ID, AL_B2B_BUSINESS_INFO_META, $sanitized_business_info);
+	}
+
+	$updated_user = get_user_by('id', (int) $user->ID);
+	if (!$updated_user) {
+		return new WP_Error('profile_unavailable', 'Updated profile could not be loaded.', array('status' => 500));
+	}
+
+	return rest_ensure_response(array(
+		'user' => al_b2b_map_user($updated_user),
+		'message' => 'Account settings updated.',
+	));
 }
 
 function al_b2b_log_audit_event($action, $target_user_id, $actor_user_id, $details = array()) {
@@ -1744,6 +2029,12 @@ function al_b2b_register_routes() {
 		'permission_callback' => '__return_true',
 	));
 
+	register_rest_route('aesthetics-link/v1', '/auth/order', array(
+		'methods' => 'GET',
+		'callback' => 'al_b2b_get_authenticated_order_detail',
+		'permission_callback' => '__return_true',
+	));
+
 	register_rest_route('aesthetics-link/v1', '/auth/logout', array(
 		'methods' => 'POST',
 		'callback' => 'al_b2b_logout_user',
@@ -1780,9 +2071,21 @@ function al_b2b_register_routes() {
 		'permission_callback' => '__return_true',
 	));
 
+	register_rest_route('aesthetics-link/v1', '/auth/profile', array(
+		'methods' => 'POST',
+		'callback' => 'al_b2b_update_profile',
+		'permission_callback' => '__return_true',
+	));
+
 	register_rest_route('aesthetics-link/v1', '/auth/orders', array(
 		'methods' => 'GET',
 		'callback' => 'al_b2b_get_account_orders',
+		'permission_callback' => '__return_true',
+	));
+
+	register_rest_route('aesthetics-link/v1', '/orders/lookup', array(
+		'methods' => 'POST',
+		'callback' => 'al_b2b_lookup_guest_order',
 		'permission_callback' => '__return_true',
 	));
 

@@ -146,6 +146,13 @@ export type StorefrontOrderConfirmation = {
   shippingAddress: StorefrontOrderAddress;
 };
 
+export type StorefrontOrderLookupResult = {
+  order: StorefrontOrderConfirmation & {
+    hasReceipt: boolean;
+    receiptToken: string;
+  };
+};
+
 export type StorefrontDetailProduct = Product & {
   regularPrice?: string | null;
   priceSource?: "retail" | "wholesale";

@@ -8,9 +8,11 @@ import type {
   RequestEmailVerificationPayload,
   RequestPasswordResetPayload,
   ResetPasswordPayload,
+  UpdateProfilePayload,
   VerifyEmailPayload,
   WholesalePricesResponse,
 } from "@/lib/auth/types";
+import type { StorefrontOrderConfirmation } from "@/lib/storefront/types";
 
 type ErrorPayload = {
   message?: string;
@@ -103,6 +105,17 @@ export async function getMe(): Promise<AuthResponse> {
 export async function getOrders(limit = 12): Promise<AuthOrdersResponse> {
   const normalized = Number.isFinite(limit) ? Math.max(1, Math.min(24, Math.floor(limit))) : 12;
   return request<AuthOrdersResponse>(`/api/auth/orders?limit=${normalized}`);
+}
+
+export async function getOrderDetail(orderId: number): Promise<StorefrontOrderConfirmation> {
+  return request<StorefrontOrderConfirmation>(`/api/auth/order?orderId=${encodeURIComponent(String(orderId))}`);
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<AuthResponse> {
+  return request<AuthResponse>("/api/auth/profile", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function logout(): Promise<{ ok: true }> {

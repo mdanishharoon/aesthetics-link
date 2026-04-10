@@ -11,8 +11,10 @@ type Action =
   | "login"
   | "register"
   | "me"
+  | "order"
   | "logout"
   | "orders"
+  | "profile"
   | "request-email-verification"
   | "verify-email"
   | "request-password-reset"
@@ -25,8 +27,10 @@ function isAction(value: string | undefined): value is Action {
     value === "login" ||
     value === "register" ||
     value === "me" ||
+    value === "order" ||
     value === "logout" ||
     value === "orders" ||
+    value === "profile" ||
     value === "request-email-verification" ||
     value === "verify-email" ||
     value === "request-password-reset" ||
@@ -36,7 +40,7 @@ function isAction(value: string | undefined): value is Action {
 }
 
 function isMethodAllowed(action: Action, method: string): boolean {
-  if (action === "me" || action === "orders" || action === "wholesale-prices") {
+  if (action === "me" || action === "order" || action === "orders" || action === "wholesale-prices") {
     return method === "GET";
   }
 
@@ -79,7 +83,7 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
     return response;
   }
 
-  if ((maybeAction === "me" || maybeAction === "orders" || maybeAction === "wholesale-prices") && !sessionToken) {
+  if ((maybeAction === "me" || maybeAction === "order" || maybeAction === "orders" || maybeAction === "profile" || maybeAction === "wholesale-prices") && !sessionToken) {
     return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
   }
 

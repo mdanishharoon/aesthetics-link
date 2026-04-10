@@ -11,6 +11,22 @@ export type BusinessInfo = {
   phone?: string;
 };
 
+export type AuthAddress = {
+  firstName: string;
+  lastName: string;
+  name: string;
+  company: string;
+  phone: string;
+  email: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+  lines: string[];
+};
+
 export type AuthUser = {
   id: number;
   email: string;
@@ -21,6 +37,8 @@ export type AuthUser = {
   accountType: AccountType;
   clinicStatus: ClinicStatus;
   businessInfo: BusinessInfo;
+  billingAddress: AuthAddress;
+  shippingAddress: AuthAddress;
   emailVerified?: boolean;
   wholesaleApproved?: boolean;
 };
@@ -104,4 +122,13 @@ export type AuthOrderSummary = {
 export type AuthOrdersResponse = {
   orders: AuthOrderSummary[];
   total: number;
+};
+
+export type UpdateProfilePayload = {
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  billingAddress: AuthAddress;
+  shippingAddress: AuthAddress;
+  businessInfo?: BusinessInfo;
 };
