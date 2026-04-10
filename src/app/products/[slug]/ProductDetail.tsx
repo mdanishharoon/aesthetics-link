@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParallax } from "@/hooks/useParallax";
 import Header from "@/components/Header";
@@ -11,7 +12,7 @@ import type {
   StorefrontDetailProduct,
   StorefrontVariationAttribute,
 } from "@/lib/storefront/types";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 function ArrowLongIcon() {
   return (
@@ -110,9 +111,6 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
   const textureRef = useParallax<HTMLImageElement>(0.18);
   const [adding, setAdding] = useState(false);
   const [addStatus, setAddStatus] = useState<{ tone: "success" | "error"; message: string } | null>(null);
-  const [displayPrice, setDisplayPrice] = useState(product.price);
-  const [displayRegularPrice, setDisplayRegularPrice] = useState<string | null>(product.regularPrice ?? null);
-  const [isWholesalePrice, setIsWholesalePrice] = useState(false);
   const variationConfig = product.variableConfig ?? null;
   const [variationSelection, setVariationSelection] = useState<Record<string, string>>(
     product.variableConfig?.defaults ?? {},
@@ -121,67 +119,42 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
   const isOutOfStock = product.inStock === false || product.stockStatus === "outofstock";
   const stockMessage = product.stockMessage || "This product is currently out of stock and unavailable.";
 
-  useEffect(() => {
-    let active = true;
+  const viewerQuery = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: getMe,
+    retry: false,
+  });
 
-    async function applyRoleAwarePrice(): Promise<void> {
-      const retail = product.price;
+  const isWholesaleViewer = Boolean(
+    viewerQuery.data &&
+      viewerQuery.data.user.role === "wholesale_customer" &&
+      viewerQuery.data.user.clinicStatus === "approved" &&
+      viewerQuery.data.user.wholesaleApproved,
+  );
 
-      try {
-        const me = await getMe();
-        const wholesale =
-          me.user.role === "wholesale_customer" &&
-          me.user.clinicStatus === "approved" &&
-          Boolean(me.user.wholesaleApproved);
+  const wholesalePricesQuery = useQuery({
+    queryKey: ["auth", "wholesale-prices", String(product.wooId ?? 0)],
+    queryFn: () => getWholesalePrices([product.wooId as number]),
+    enabled: isWholesaleViewer && Boolean(product.wooId && product.wooId > 0),
+  });
 
-        if (!active) {
-          return;
-        }
-
-        if (!wholesale || !product.wooId || product.wooId <= 0) {
-          setDisplayPrice(retail);
-          setDisplayRegularPrice(product.regularPrice ?? null);
-          setIsWholesalePrice(false);
-          return;
-        }
-
-        const prices = await getWholesalePrices([product.wooId]);
-        if (!active) {
-          return;
-        }
-
-        const entry = prices.prices[String(product.wooId)];
-        if (!entry || entry.source !== "wholesale" || !prices.isWholesaleViewer) {
-          setDisplayPrice(retail);
-          setDisplayRegularPrice(product.regularPrice ?? null);
-          setIsWholesalePrice(false);
-          return;
-        }
-
-        setDisplayPrice(entry.priceLabel || retail);
-        setDisplayRegularPrice(entry.hasDiscount ? entry.regularPriceLabel : null);
-        setIsWholesalePrice(true);
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setDisplayPrice(retail);
-        setDisplayRegularPrice(product.regularPrice ?? null);
-        setIsWholesalePrice(false);
-      }
-    }
-
-    void applyRoleAwarePrice();
-
-    return () => {
-      active = false;
-    };
-  }, [product.price, product.regularPrice, product.wooId]);
+  const wholesalePriceEntry = wholesalePricesQuery.data?.prices[String(product.wooId)];
+  const isWholesalePrice = Boolean(
+    isWholesaleViewer &&
+      wholesalePricesQuery.data?.isWholesaleViewer &&
+      wholesalePriceEntry &&
+      wholesalePriceEntry.source === "wholesale",
+  );
+  const displayPrice = isWholesalePrice ? wholesalePriceEntry?.priceLabel || product.price : product.price;
+  const displayRegularPrice = isWholesalePrice
+    ? wholesalePriceEntry?.hasDiscount
+      ? wholesalePriceEntry.regularPriceLabel
+      : null
+    : product.regularPrice ?? null;
 
 
-  const variationAttributes = variationConfig?.attributes ?? [];
-  const variationEntries = variationConfig?.variations ?? [];
+  const variationAttributes = useMemo(() => variationConfig?.attributes ?? [], [variationConfig]);
+  const variationEntries = useMemo(() => variationConfig?.variations ?? [], [variationConfig]);
   const optionsReady = !isVariableProduct || variationAttributes.length > 0;
   const missingSelections = variationAttributes.filter((attribute) => !variationSelection[attribute.id]);
 

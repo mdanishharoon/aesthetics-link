@@ -8,18 +8,19 @@ import { Suspense, useMemo, useState } from "react";
 
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
-import { getMe, getOrderDetail, getOrders, logout, updateProfile } from "@/lib/auth/client";
-import type { AuthAddress, AuthOrderSummary, AuthUser, BusinessInfo, UpdateProfilePayload } from "@/lib/auth/types";
+import { getAccountDashboard, getOrderDetail, logout, updateProfile } from "@/lib/auth/client";
+import type {
+  AuthAddress,
+  AuthDashboardResponse,
+  AuthOrderSummary,
+  AuthUser,
+  BusinessInfo,
+  UpdateProfilePayload,
+} from "@/lib/auth/types";
 import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
 
 const ORDER_FETCH_LIMIT = 12;
 const EMPTY_ORDERS: AuthOrderSummary[] = [];
-
-type ProfileDashboardData = {
-  user: AuthUser;
-  orders: AuthOrderSummary[];
-  ordersError: string | null;
-};
 
 type SettingsFormState = {
   firstName: string;
@@ -658,31 +659,13 @@ function ProfileDashboard() {
   const [form, setForm] = useState<SettingsFormState | null>(null);
   const state = searchParams.get("state");
 
-  const dashboardQuery = useQuery<ProfileDashboardData>({
+  const dashboardQuery = useQuery<AuthDashboardResponse>({
     queryKey: ["auth", "dashboard", ORDER_FETCH_LIMIT],
-    queryFn: async () => {
-      const [meResult, ordersResult] = await Promise.allSettled([getMe(), getOrders(ORDER_FETCH_LIMIT)]);
-
-      if (meResult.status === "rejected") {
-        throw meResult.reason;
-      }
-
-      return {
-        user: meResult.value.user,
-        orders: ordersResult.status === "fulfilled" ? ordersResult.value.orders ?? [] : [],
-        ordersError:
-          ordersResult.status === "rejected"
-            ? ordersResult.reason instanceof Error
-              ? ordersResult.reason.message
-              : "Unable to load your order history."
-            : null,
-      };
-    },
+    queryFn: () => getAccountDashboard(ORDER_FETCH_LIMIT),
   });
 
   const user = dashboardQuery.data?.user ?? null;
   const orders = dashboardQuery.data?.orders ?? EMPTY_ORDERS;
-  const ordersError = dashboardQuery.data?.ordersError ?? null;
   const effectiveSelectedOrderId =
     selectedOrderId && orders.some((order) => order.orderId === selectedOrderId)
       ? selectedOrderId
@@ -693,6 +676,11 @@ function ProfileDashboard() {
     queryKey: ["auth", "order", effectiveSelectedOrderId],
     queryFn: () => getOrderDetail(effectiveSelectedOrderId as number),
     enabled: Boolean(user && effectiveSelectedOrderId),
+    initialData:
+      dashboardQuery.data?.initialOrderDetail &&
+      dashboardQuery.data.initialOrderDetail.orderId === effectiveSelectedOrderId
+        ? dashboardQuery.data.initialOrderDetail
+        : undefined,
   });
 
   const logoutMutation = useMutation({
@@ -710,10 +698,10 @@ function ProfileDashboard() {
   const updateProfileMutation = useMutation({
     mutationFn: updateProfile,
     onSuccess: (response) => {
-      queryClient.setQueryData<ProfileDashboardData>(["auth", "dashboard", ORDER_FETCH_LIMIT], (current) =>
+      queryClient.setQueryData<AuthDashboardResponse>(["auth", "dashboard", ORDER_FETCH_LIMIT], (current) =>
         current
           ? { ...current, user: response.user }
-          : { user: response.user, orders: [], ordersError: null },
+          : { user: response.user, orders: [], total: 0, initialOrderDetail: null },
       );
       setForm(toSettingsState(response.user));
       setSettingsError(null);
@@ -914,7 +902,7 @@ function ProfileDashboard() {
                 <OrdersSection
                   orders={orders}
                   loading={dashboardQuery.isPending}
-                  error={ordersError}
+                  error={null}
                   selectedOrderId={effectiveSelectedOrderId}
                   onRetry={() => void dashboardQuery.refetch()}
                   onSelectOrder={(orderId) => setSelectedOrderId(orderId)}

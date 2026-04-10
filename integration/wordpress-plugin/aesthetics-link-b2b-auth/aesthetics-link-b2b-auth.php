@@ -1483,6 +1483,62 @@ function al_b2b_get_account_orders($request) {
 	));
 }
 
+function al_b2b_get_account_dashboard($request) {
+	$token = al_b2b_parse_bearer_token($request);
+	if (!$token) {
+		return new WP_Error('unauthorized', 'Not authenticated.', array('status' => 401));
+	}
+
+	$user = al_b2b_get_user_from_token($token);
+	if (!$user) {
+		return new WP_Error('unauthorized', 'Session expired or invalid.', array('status' => 401));
+	}
+
+	if (!function_exists('wc_get_orders') || !function_exists('wc_get_order_status_name')) {
+		return new WP_Error('woocommerce_required', 'WooCommerce is required.', array('status' => 500));
+	}
+
+	$limit = (int) $request->get_param('limit');
+	if ($limit <= 0) {
+		$limit = 12;
+	}
+	$limit = min(24, $limit);
+
+	$orders = wc_get_orders(array(
+		'customer_id' => (int) $user->ID,
+		'limit' => $limit,
+		'orderby' => 'date',
+		'order' => 'DESC',
+		'return' => 'objects',
+	));
+
+	$mapped_orders = array();
+	$initial_order_detail = null;
+
+	if (is_array($orders)) {
+		foreach ($orders as $index => $order) {
+			$mapped = al_b2b_map_order_summary($order);
+			if ($mapped) {
+				$mapped_orders[] = $mapped;
+			}
+
+			if ($index === 0 && !$initial_order_detail) {
+				$payload = al_b2b_build_order_confirmation_payload($order);
+				if ($payload) {
+					$initial_order_detail = $payload;
+				}
+			}
+		}
+	}
+
+	return rest_ensure_response(array(
+		'user' => al_b2b_map_user($user),
+		'orders' => $mapped_orders,
+		'total' => count($mapped_orders),
+		'initialOrderDetail' => $initial_order_detail,
+	));
+}
+
 function al_b2b_get_authenticated_order_detail($request) {
 	$token = al_b2b_parse_bearer_token($request);
 	if (!$token) {
@@ -2026,6 +2082,12 @@ function al_b2b_register_routes() {
 	register_rest_route('aesthetics-link/v1', '/auth/me', array(
 		'methods' => 'GET',
 		'callback' => 'al_b2b_get_me',
+		'permission_callback' => '__return_true',
+	));
+
+	register_rest_route('aesthetics-link/v1', '/auth/dashboard', array(
+		'methods' => 'GET',
+		'callback' => 'al_b2b_get_account_dashboard',
 		'permission_callback' => '__return_true',
 	));
 

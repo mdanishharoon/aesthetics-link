@@ -1,10 +1,12 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
+import { lookupGuestOrder } from "@/lib/storefront/client";
 import type { StorefrontOrderAddress, StorefrontOrderLookupResult } from "@/lib/storefront/types";
 
 function AddressBlock({
@@ -32,45 +34,31 @@ function AddressBlock({
 export default function OrderLookupPage() {
   const [orderNumber, setOrderNumber] = useState("");
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StorefrontOrderLookupResult | null>(null);
 
+  const lookupMutation = useMutation({
+    mutationFn: ({ nextOrderNumber, nextEmail }: { nextOrderNumber: string; nextEmail: string }) =>
+      lookupGuestOrder(nextOrderNumber, nextEmail),
+    onSuccess: (payload) => {
+      setError(null);
+      setResult(payload);
+    },
+    onError: (lookupError) => {
+      setResult(null);
+      setError(lookupError instanceof Error ? lookupError.message : "Unable to locate that order.");
+    },
+  });
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (loading) {
+    if (lookupMutation.isPending) {
       return;
     }
 
-    setLoading(true);
     setError(null);
     setResult(null);
-
-    try {
-      const response = await fetch("/api/orders/lookup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ orderNumber, email }),
-      });
-
-      const payload = (await response.json().catch(() => null)) as
-        | StorefrontOrderLookupResult
-        | { message?: string }
-        | null;
-
-      if (!response.ok) {
-        throw new Error(payload && "message" in payload && payload.message ? payload.message : "Order lookup failed.");
-      }
-
-      setResult(payload as StorefrontOrderLookupResult);
-    } catch (lookupError) {
-      setError(lookupError instanceof Error ? lookupError.message : "Unable to locate that order.");
-    } finally {
-      setLoading(false);
-    }
+    await lookupMutation.mutateAsync({ nextOrderNumber: orderNumber, nextEmail: email });
   }
 
   const order = result?.order ?? null;
@@ -130,8 +118,8 @@ export default function OrderLookupPage() {
                 />
               </label>
               <div className="profile-dashboard__action-row order-lookup__actions">
-                <button type="submit" className="profile-dashboard__button" disabled={loading}>
-                  {loading ? "Searching..." : "Find order"}
+                <button type="submit" className="profile-dashboard__button" disabled={lookupMutation.isPending}>
+                  {lookupMutation.isPending ? "Searching..." : "Find order"}
                 </button>
               </div>
             </form>

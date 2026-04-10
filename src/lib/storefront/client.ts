@@ -4,6 +4,7 @@ import type {
   StorefrontCart,
   StorefrontCheckoutPayload,
   StorefrontCheckoutResponse,
+  StorefrontOrderLookupResult,
 } from "@/lib/storefront/types";
 
 // ── Raw Store API types ────────────────────────────────────────────────────
@@ -404,6 +405,29 @@ export async function removeCartItem(key: string): Promise<StorefrontCart> {
     }
     throw error;
   }
+}
+
+export async function lookupGuestOrder(orderNumber: string, email: string): Promise<StorefrontOrderLookupResult> {
+  const response = await fetch("/api/orders/lookup", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ orderNumber, email }),
+    cache: "no-store",
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | StorefrontOrderLookupResult
+    | { message?: string }
+    | null;
+
+  if (!response.ok) {
+    throw new Error(payload && "message" in payload && payload.message ? payload.message : "Order lookup failed.");
+  }
+
+  return payload as StorefrontOrderLookupResult;
 }
 
 export async function submitCheckout(

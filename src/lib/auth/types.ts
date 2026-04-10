@@ -1,3 +1,5 @@
+import type { StorefrontOrderConfirmation } from "@/lib/storefront/types";
+
 export type AccountType = "retail" | "clinic";
 
 export type ClinicStatus = "approved" | "pending" | "rejected" | null;
@@ -122,6 +124,13 @@ export type AuthOrderSummary = {
 export type AuthOrdersResponse = {
   orders: AuthOrderSummary[];
   total: number;
+};
+
+export type AuthDashboardResponse = {
+  user: AuthUser;
+  orders: AuthOrderSummary[];
+  total: number;
+  initialOrderDetail?: StorefrontOrderConfirmation | null;
 };
 
 export type UpdateProfilePayload = {

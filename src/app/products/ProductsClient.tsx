@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
@@ -15,6 +16,17 @@ import type { StorefrontCart, StorefrontCatalogProduct } from "@/lib/storefront/
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+const EMPTY_CART: StorefrontCart = {
+  items: [],
+  itemCount: 0,
+  subtotal: "$0.00",
+  shipping: "$0.00",
+  tax: "$0.00",
+  total: "$0.00",
+  currencySymbol: "$",
+  needsShipping: false,
+};
 
 function QuickCartIcon() {
   return (
@@ -305,22 +317,10 @@ export default function ProductsClient({
 }) {
   const navigation = useStorefrontNavigation();
   const router = useRouter();
-  const [products, setProducts] = useState<StorefrontCatalogProduct[]>(initialProducts);
+  const queryClient = useQueryClient();
   const [activeConcern, setActiveConcern] = useState(initialConcern);
   const [activeBrand, setActiveBrand] = useState(initialBrand);
   const [cartOpen, setCartOpen] = useState(false);
-  const [isWholesaleViewer, setIsWholesaleViewer] = useState(false);
-  const [cart, setCart] = useState<StorefrontCart>({
-    items: [],
-    itemCount: 0,
-    subtotal: "$0.00",
-    shipping: "$0.00",
-    tax: "$0.00",
-    total: "$0.00",
-    currencySymbol: "$",
-    needsShipping: false,
-  });
-  const [cartBusy, setCartBusy] = useState(false);
 
   const normalizeFilterSlug = (value: string | null | undefined): string => {
     if (!value) {
@@ -381,6 +381,64 @@ export default function ProductsClient({
     const links = navigation?.brands ?? [];
     return extractNavFilterOptions(links, "brand");
   }, [navigation, extractNavFilterOptions]);
+
+  const productIds = useMemo(
+    () => initialProducts.map((product) => product.id).filter((id) => Number.isInteger(id) && id > 0),
+    [initialProducts],
+  );
+
+  const viewerQuery = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: getMe,
+    retry: false,
+  });
+
+  const isWholesaleViewer = Boolean(
+    viewerQuery.data &&
+      viewerQuery.data.user.role === "wholesale_customer" &&
+      viewerQuery.data.user.clinicStatus === "approved" &&
+      viewerQuery.data.user.wholesaleApproved,
+  );
+
+  const wholesalePricesQuery = useQuery({
+    queryKey: ["auth", "wholesale-prices", productIds.join(",")],
+    queryFn: () => getWholesalePrices(productIds),
+    enabled: isWholesaleViewer && productIds.length > 0,
+  });
+
+  const products = useMemo(() => {
+    if (!isWholesaleViewer || !wholesalePricesQuery.data?.isWholesaleViewer) {
+      return initialProducts.map((product) => ({
+        ...product,
+        priceSource: "retail" as const,
+        price: product.retailPrice ?? product.price,
+        regularPrice: null,
+        hasDiscount: false,
+      }));
+    }
+
+    return initialProducts.map((product) => {
+      const entry = wholesalePricesQuery.data?.prices[String(product.id)];
+      if (!entry || entry.source !== "wholesale") {
+        return {
+          ...product,
+          priceSource: "retail" as const,
+          price: product.retailPrice ?? product.price,
+          regularPrice: null,
+          hasDiscount: false,
+        };
+      }
+
+      return {
+        ...product,
+        retailPrice: product.retailPrice ?? product.price,
+        price: entry.priceLabel,
+        regularPrice: entry.hasDiscount ? entry.regularPriceLabel : null,
+        hasDiscount: entry.hasDiscount,
+        priceSource: "wholesale" as const,
+      };
+    });
+  }, [initialProducts, isWholesaleViewer, wholesalePricesQuery.data]);
 
   const knownBrandSlugs = useMemo(
     () => Array.from(new Set(brandFilters.map((brand) => normalizeFilterSlug(brand.slug)).filter(Boolean))),
@@ -496,111 +554,38 @@ export default function ProductsClient({
   }, [brandFilters, activeBrand]);
 
   useEffect(() => {
-    void refreshCart();
-  }, []);
-
-  useEffect(() => {
-    setProducts(initialProducts);
-  }, [initialProducts]);
-
-  useEffect(() => {
     setActiveConcern(initialConcern);
   }, [initialConcern]);
 
   useEffect(() => {
     setActiveBrand(initialBrand);
   }, [initialBrand]);
+  const cartQuery = useQuery({
+    queryKey: ["storefront", "cart"],
+    queryFn: fetchCart,
+    initialData: EMPTY_CART,
+  });
 
-  useEffect(() => {
-    let active = true;
+  const addCartMutation = useMutation({
+    mutationFn: (productId: number) => addCartItem(productId, 1),
+    onSuccess: (nextCart) => {
+      queryClient.setQueryData(["storefront", "cart"], nextCart);
+    },
+  });
 
-    async function applyRoleAwarePricing(): Promise<void> {
-      try {
-        const me = await getMe();
-        const wholesale =
-          me.user.role === "wholesale_customer" &&
-          me.user.clinicStatus === "approved" &&
-          Boolean(me.user.wholesaleApproved);
+  const updateCartMutation = useMutation({
+    mutationFn: ({ key, quantity }: { key: string; quantity: number }) => updateCartItemQuantity(key, quantity),
+    onSuccess: (nextCart) => {
+      queryClient.setQueryData(["storefront", "cart"], nextCart);
+    },
+  });
 
-        if (!active) {
-          return;
-        }
-
-        setIsWholesaleViewer(wholesale);
-
-        if (!wholesale) {
-          setProducts((prev) =>
-            prev.map((product) => ({
-              ...product,
-              priceSource: "retail",
-              price: product.retailPrice ?? product.price,
-              regularPrice: null,
-              hasDiscount: false,
-            })),
-          );
-          return;
-        }
-
-        const ids = initialProducts
-          .map((product) => product.id)
-          .filter((id) => Number.isInteger(id) && id > 0);
-
-        if (ids.length === 0) {
-          return;
-        }
-
-        const priceResponse = await getWholesalePrices(ids);
-        if (!active) {
-          return;
-        }
-
-        setProducts((prev) =>
-          prev.map((product) => {
-            const entry = priceResponse.prices[String(product.id)];
-            if (!entry || entry.source !== "wholesale" || !priceResponse.isWholesaleViewer) {
-              return {
-                ...product,
-                priceSource: "retail",
-                price: product.retailPrice ?? product.price,
-                regularPrice: null,
-                hasDiscount: false,
-              };
-            }
-
-            return {
-              ...product,
-              retailPrice: product.retailPrice ?? product.price,
-              price: entry.priceLabel,
-              regularPrice: entry.hasDiscount ? entry.regularPriceLabel : null,
-              hasDiscount: entry.hasDiscount,
-              priceSource: "wholesale",
-            };
-          }),
-        );
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setIsWholesaleViewer(false);
-        setProducts((prev) =>
-          prev.map((product) => ({
-            ...product,
-            priceSource: "retail",
-            price: product.retailPrice ?? product.price,
-            regularPrice: null,
-            hasDiscount: false,
-          })),
-        );
-      }
-    }
-
-    void applyRoleAwarePricing();
-
-    return () => {
-      active = false;
-    };
-  }, [initialProducts]);
+  const removeCartMutation = useMutation({
+    mutationFn: (key: string) => removeCartItem(key),
+    onSuccess: (nextCart) => {
+      queryClient.setQueryData(["storefront", "cart"], nextCart);
+    },
+  });
 
   const normalizedActiveConcern = normalizeFilterSlug(activeConcern);
   const normalizedActiveBrand = normalizeFilterSlug(activeBrand);
@@ -674,37 +659,24 @@ export default function ProductsClient({
   };
 
   async function refreshCart(): Promise<void> {
-    const nextCart = await fetchCart();
-    setCart(nextCart);
-  }
-
-  async function withCartMutation(action: () => Promise<StorefrontCart>): Promise<void> {
-    if (cartBusy) {
-      return;
-    }
-
-    setCartBusy(true);
-    try {
-      const nextCart = await action();
-      setCart(nextCart);
-    } finally {
-      setCartBusy(false);
-    }
+    await cartQuery.refetch();
   }
 
   async function handleAddToCart(product: StorefrontCatalogProduct): Promise<void> {
     setCartOpen(true);
-    await withCartMutation(() => addCartItem(product.id, 1));
+    await addCartMutation.mutateAsync(product.id);
   }
 
   async function handleRemoveFromCart(key: string): Promise<void> {
-    await withCartMutation(() => removeCartItem(key));
+    await removeCartMutation.mutateAsync(key);
   }
 
   async function handleUpdateQty(key: string, nextQty: number): Promise<void> {
-    await withCartMutation(() => updateCartItemQuantity(key, nextQty));
+    await updateCartMutation.mutateAsync({ key, quantity: nextQty });
   }
 
+  const cart = cartQuery.data ?? EMPTY_CART;
+  const cartBusy = addCartMutation.isPending || updateCartMutation.isPending || removeCartMutation.isPending;
   const cartCount = cart.itemCount;
 
   return (

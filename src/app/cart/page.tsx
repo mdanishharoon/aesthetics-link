@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
@@ -11,7 +12,7 @@ import {
 } from "@/lib/storefront/client";
 import type { StorefrontCart } from "@/lib/storefront/types";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const EMPTY_CART: StorefrontCart = {
   items: [],
@@ -25,61 +26,88 @@ const EMPTY_CART: StorefrontCart = {
 };
 
 export default function CartPage() {
+  const queryClient = useQueryClient();
   const [initialCachedCart] = useState<StorefrontCart | null>(() => getCachedCartSnapshot());
-  const [cart, setCart] = useState<StorefrontCart>(initialCachedCart ?? EMPTY_CART);
-  const [loading, setLoading] = useState(initialCachedCart === null);
-  const [hasLiveCart, setHasLiveCart] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function refreshCart(showLoadingState = true): Promise<void> {
-    if (showLoadingState) {
-      setLoading(true);
+  const [checkoutErrorMessage] = useState<string | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
     }
-    setError(null);
-    try {
-      const nextCart = await fetchCart();
-      setCart(nextCart);
-      setHasLiveCart(true);
-    } catch (cartError) {
-      setError(cartError instanceof Error ? cartError.message : "Unable to load your cart.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  useEffect(() => {
-    void refreshCart(initialCachedCart === null);
-  }, [initialCachedCart]);
-
-  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const checkoutError = params.get("checkout_error");
-    if (checkoutError) {
-      const checkoutErrorMessages: Record<string, string> = {
-        bridge_unavailable: "Checkout bridge is temporarily unavailable. Please try again in a moment.",
-        missing_cart_token: "Your checkout session expired. Please refresh your bag before continuing.",
-        bridge_identity_unavailable:
-          "We could not verify your account context for checkout. Please refresh and try again.",
-        bridge_invalid: "The checkout handoff was invalid. Please try again from your bag.",
-        bridge_crashed: "Checkout failed during handoff. Please try again in a moment.",
-        bridge_sync_failed: "We could not sync your bag into checkout. Please try again.",
-        bridge_cart_mismatch:
-          "Your bag changed during checkout handoff. Please review it and try again.",
-        store_cart_unavailable:
-          "We could not read your current bag from WooCommerce. Please try again in a moment.",
-        store_cart_empty: "Your bag is empty. Add items before proceeding to checkout.",
-        wc_cart_unavailable:
-          "WooCommerce checkout is not ready right now. Please try again in a moment.",
-        woocommerce_unavailable:
-          "WooCommerce checkout is not available right now. Please try again in a moment.",
-        bridge_user_invalid:
-          "Your account context could not be restored for checkout. Please sign in again.",
-      };
-      setError(
-        checkoutErrorMessages[checkoutError] ??
-          "Checkout could not be started. Please review your bag and try again.",
-      );
+    if (!checkoutError) {
+      return null;
+    }
+
+    const checkoutErrorMessages: Record<string, string> = {
+      bridge_unavailable: "Checkout bridge is temporarily unavailable. Please try again in a moment.",
+      missing_cart_token: "Your checkout session expired. Please refresh your bag before continuing.",
+      bridge_identity_unavailable:
+        "We could not verify your account context for checkout. Please refresh and try again.",
+      bridge_invalid: "The checkout handoff was invalid. Please try again from your bag.",
+      bridge_crashed: "Checkout failed during handoff. Please try again in a moment.",
+      bridge_sync_failed: "We could not sync your bag into checkout. Please try again.",
+      bridge_cart_mismatch:
+        "Your bag changed during checkout handoff. Please review it and try again.",
+      store_cart_unavailable:
+        "We could not read your current bag from WooCommerce. Please try again in a moment.",
+      store_cart_empty: "Your bag is empty. Add items before proceeding to checkout.",
+      wc_cart_unavailable:
+        "WooCommerce checkout is not ready right now. Please try again in a moment.",
+      woocommerce_unavailable:
+        "WooCommerce checkout is not available right now. Please try again in a moment.",
+      bridge_user_invalid:
+        "Your account context could not be restored for checkout. Please sign in again.",
+    };
+
+    return (
+      checkoutErrorMessages[checkoutError] ??
+      "Checkout could not be started. Please review your bag and try again."
+    );
+  });
+  const cartQuery = useQuery({
+    queryKey: ["storefront", "cart"],
+    queryFn: fetchCart,
+    initialData: initialCachedCart ?? undefined,
+  });
+
+  const quantityMutation = useMutation({
+    mutationFn: ({ key, quantity }: { key: string; quantity: number }) =>
+      updateCartItemQuantity(key, Math.max(1, quantity)),
+    onSuccess: (nextCart) => {
+      queryClient.setQueryData(["storefront", "cart"], nextCart);
+      setError(null);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Unable to update your cart.");
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (key: string) => removeCartItem(key),
+    onSuccess: (nextCart) => {
+      queryClient.setQueryData(["storefront", "cart"], nextCart);
+      setError(null);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Unable to update your cart.");
+    },
+  });
+
+  const cart = cartQuery.data ?? initialCachedCart ?? EMPTY_CART;
+  const loading = cartQuery.isPending;
+  const busy = quantityMutation.isPending || removeMutation.isPending;
+  const hasLiveCart =
+    cartQuery.isSuccess && (initialCachedCart === null || cartQuery.isFetchedAfterMount);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("checkout_error")) {
       params.delete("checkout_error");
       const nextQuery = params.toString();
       const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
@@ -87,32 +115,27 @@ export default function CartPage() {
     }
   }, []);
 
-  async function withCartMutation(action: () => Promise<StorefrontCart>): Promise<void> {
+  async function handleQuantityChange(key: string, nextQuantity: number): Promise<void> {
     if (busy) {
       return;
     }
-
-    setBusy(true);
-    setError(null);
-    try {
-      const nextCart = await action();
-      setCart(nextCart);
-    } catch (mutationError) {
-      setError(
-        mutationError instanceof Error ? mutationError.message : "Unable to update your cart.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleQuantityChange(key: string, nextQuantity: number): Promise<void> {
-    await withCartMutation(() => updateCartItemQuantity(key, Math.max(1, nextQuantity)));
+    await quantityMutation.mutateAsync({ key, quantity: nextQuantity });
   }
 
   async function handleRemoveItem(key: string): Promise<void> {
-    await withCartMutation(() => removeCartItem(key));
+    if (busy) {
+      return;
+    }
+    await removeMutation.mutateAsync(key);
   }
+
+  const visibleError = useMemo(
+    () =>
+      error ??
+      checkoutErrorMessage ??
+      (cartQuery.error instanceof Error ? cartQuery.error.message : null),
+    [cartQuery.error, checkoutErrorMessage, error],
+  );
 
   function handleGoToCheckout(): void {
     window.location.assign("/api/checkout/bridge");
@@ -234,9 +257,9 @@ export default function CartPage() {
               You will be redirected to secure checkout to complete payment.
             </p>
 
-            {error ? (
+            {visibleError ? (
               <p style={{ fontSize: "0.85rem", color: "#b04545", textAlign: "center", marginTop: "1rem" }}>
-                {error}
+                {visibleError}
               </p>
             ) : null}
           </div>
