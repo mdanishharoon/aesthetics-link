@@ -785,25 +785,17 @@ async function fetchWooProductBrandLookup(): Promise<WooProductBrandLookup | nul
 }
 
 export async function getOrderConfirmation(
-  orderId: string | number | null | undefined,
-  orderKey: string | null | undefined,
+  receiptToken: string | null | undefined,
 ): Promise<StorefrontOrderConfirmation | null> {
-  const normalizedId =
-    typeof orderId === "number"
-      ? orderId
-      : typeof orderId === "string" && Number.isFinite(Number(orderId))
-        ? Number(orderId)
-        : 0;
-  const normalizedKey = typeof orderKey === "string" ? orderKey.trim() : "";
+  const normalizedToken = typeof receiptToken === "string" ? receiptToken.trim() : "";
   const baseUrl = getWooStoreBaseUrl();
 
-  if (!baseUrl || normalizedId <= 0 || !normalizedKey) {
+  if (!baseUrl || !normalizedToken) {
     return null;
   }
 
   const url = new URL("/wp-json/aesthetics-link/v1/orders/confirmation", baseUrl);
-  url.searchParams.set("order_id", String(normalizedId));
-  url.searchParams.set("key", normalizedKey);
+  url.searchParams.set("receipt", normalizedToken);
 
   const response = await fetch(url.toString(), {
     headers: { Accept: "application/json" },

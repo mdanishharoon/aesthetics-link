@@ -1,7 +1,12 @@
+import Link from "next/link";
+import { cookies } from "next/headers";
+
 import { getOrderConfirmation } from "@/lib/storefront/server";
 import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+const RECEIPT_TOKEN_COOKIE = "al_order_receipt";
+const STOREFRONT_RETURN_HREF = "/products";
 
 function getSingleParam(
   params: Record<string, string | string[] | undefined>,
@@ -40,11 +45,9 @@ function AddressBlock({
 }
 
 function OrderFallback({
-  orderNumber,
-  hasMissingQuery,
+  hasMissingReceipt,
 }: {
-  orderNumber: string;
-  hasMissingQuery: boolean;
+  hasMissingReceipt: boolean;
 }) {
   return (
     <article className="order-receipt order-receipt--fallback">
@@ -57,21 +60,20 @@ function OrderFallback({
 
       <section className="order-receipt__section">
         <h1 className="order-receipt__title">
-          {hasMissingQuery ? "We could not verify this order receipt." : "We could not load the full order details."}
+          {hasMissingReceipt ? "We could not verify this order receipt." : "We could not load the full order details."}
         </h1>
         <p className="order-receipt__summary">
-          {hasMissingQuery
-            ? "This page is missing the reference required to display the completed receipt. Please reopen the confirmation email and use that link."
+          {hasMissingReceipt
+            ? "This receipt link is missing or has expired. Reopen the completion link from checkout or use your confirmation email if you need the order details again."
             : "The order appears complete, but the receipt data could not be loaded right now. Please use your confirmation email if you need to review the order immediately."}
         </p>
       </section>
 
-      {orderNumber ? (
-        <section className="order-receipt__section order-receipt__reference-row">
-          <span className="order-receipt__kicker">Reference</span>
-          <strong>Order #{orderNumber}</strong>
-        </section>
-      ) : null}
+      <section className="order-receipt__section order-receipt__actions">
+        <Link href={STOREFRONT_RETURN_HREF} className="order-receipt__action-link">
+          Return to storefront
+        </Link>
+      </section>
     </article>
   );
 }
@@ -184,6 +186,12 @@ function OrderReceipt({ order }: { order: StorefrontOrderConfirmation }) {
               <p>{order.customerNote}</p>
             </div>
           ) : null}
+
+          <div className="order-receipt__actions">
+            <Link href={STOREFRONT_RETURN_HREF} className="order-receipt__action-link">
+              Return to storefront
+            </Link>
+          </div>
         </div>
 
         <div className="order-receipt__totals">
@@ -215,20 +223,20 @@ export default async function OrderConfirmedPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const orderId = getSingleParam(params, "order_id");
-  const orderKey = getSingleParam(params, "key");
-  const hasMissingQuery = !orderId || !orderKey;
+  const receiptFromQuery = getSingleParam(params, "receipt");
+  const cookieStore = await cookies();
+  const receiptFromCookie = cookieStore.get(RECEIPT_TOKEN_COOKIE)?.value?.trim() ?? "";
+  const receiptToken = receiptFromCookie || receiptFromQuery;
+  const hasMissingReceipt = !receiptToken;
   let order: StorefrontOrderConfirmation | null = null;
 
-  if (!hasMissingQuery) {
+  if (!hasMissingReceipt) {
     try {
-      order = await getOrderConfirmation(orderId, orderKey);
+      order = await getOrderConfirmation(receiptToken);
     } catch (error) {
       console.error("[Order confirmation] Failed to load order details.", error);
     }
   }
-
-  const fallbackOrderNumber = order ? order.orderNumber : orderId;
 
   return (
     <main className="order-receipt-page">
@@ -236,7 +244,7 @@ export default async function OrderConfirmedPage({
         {order ? (
           <OrderReceipt order={order} />
         ) : (
-          <OrderFallback orderNumber={fallbackOrderNumber} hasMissingQuery={hasMissingQuery} />
+          <OrderFallback hasMissingReceipt={hasMissingReceipt} />
         )}
       </div>
     </main>

@@ -261,6 +261,93 @@ function al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature) {
 	);
 }
 
+function al_b2b_get_order_receipt_ttl() {
+	$ttl = (int) apply_filters('al_b2b_order_receipt_ttl', 2 * DAY_IN_SECONDS);
+	return max(HOUR_IN_SECONDS, $ttl);
+}
+
+function al_b2b_sign_order_receipt_payload($encoded_payload) {
+	$secret = al_b2b_get_checkout_bridge_secret();
+	if (!$secret || !$encoded_payload) {
+		return '';
+	}
+
+	return al_b2b_base64url_encode(
+		hash_hmac('sha256', 'order_receipt|' . $encoded_payload, $secret, true)
+	);
+}
+
+function al_b2b_create_order_receipt_token($order) {
+	if (!$order || !method_exists($order, 'get_id') || !method_exists($order, 'get_order_key')) {
+		return '';
+	}
+
+	$order_id = (int) $order->get_id();
+	$order_key = trim((string) $order->get_order_key());
+
+	if ($order_id <= 0 || !$order_key) {
+		return '';
+	}
+
+	$payload = array(
+		'orderId' => $order_id,
+		'key' => $order_key,
+		'exp' => time() + al_b2b_get_order_receipt_ttl(),
+	);
+
+	$encoded_payload = al_b2b_base64url_encode(wp_json_encode($payload));
+	$signature = al_b2b_sign_order_receipt_payload($encoded_payload);
+
+	if (!$encoded_payload || !$signature) {
+		return '';
+	}
+
+	return $encoded_payload . '.' . $signature;
+}
+
+function al_b2b_parse_order_receipt_token($token) {
+	$token = trim((string) $token);
+	if (!$token) {
+		return null;
+	}
+
+	$parts = explode('.', $token);
+	if (count($parts) !== 2) {
+		return null;
+	}
+
+	$encoded_payload = trim((string) $parts[0]);
+	$signature = trim((string) $parts[1]);
+	$expected_signature = al_b2b_sign_order_receipt_payload($encoded_payload);
+
+	if (!$expected_signature || !$signature || !hash_equals($expected_signature, $signature)) {
+		return null;
+	}
+
+	$json = al_b2b_base64url_decode($encoded_payload);
+	if (!$json) {
+		return null;
+	}
+
+	$payload = json_decode($json, true);
+	if (!is_array($payload)) {
+		return null;
+	}
+
+	$order_id = isset($payload['orderId']) ? (int) $payload['orderId'] : 0;
+	$order_key = isset($payload['key']) ? trim((string) $payload['key']) : '';
+	$exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
+
+	if ($order_id <= 0 || !$order_key || $exp <= time()) {
+		return null;
+	}
+
+	return array(
+		'orderId' => $order_id,
+		'key' => $order_key,
+	);
+}
+
 function al_b2b_assert_captcha($payload) {
 	$secret = al_b2b_get_turnstile_secret();
 	if (!$secret) {
@@ -333,9 +420,13 @@ function al_b2b_override_return_url($return_url, $order) {
 		return al_b2b_build_frontend_url('/');
 	}
 
+	$receipt_token = al_b2b_create_order_receipt_token($order);
+	if (!$receipt_token) {
+		return al_b2b_build_frontend_url('/');
+	}
+
 	return al_b2b_build_frontend_url('api/checkout/complete', array(
-		'order_id' => $order->get_id(),
-		'key'      => $order->get_order_key(),
+		'receipt' => $receipt_token,
 	));
 }
 
@@ -1175,8 +1266,22 @@ function al_b2b_map_order_line_item($item) {
 }
 
 function al_b2b_get_order_confirmation($request) {
-	$order_id = (int) $request->get_param('order_id');
-	$order_key = trim((string) $request->get_param('key'));
+	$receipt_token = trim((string) $request->get_param('receipt'));
+	$order_id = 0;
+	$order_key = '';
+
+	if ($receipt_token) {
+		$receipt_payload = al_b2b_parse_order_receipt_token($receipt_token);
+		if (!$receipt_payload) {
+			return new WP_Error('invalid_order_receipt', 'Order confirmation could not be verified.', array('status' => 404));
+		}
+
+		$order_id = (int) $receipt_payload['orderId'];
+		$order_key = trim((string) $receipt_payload['key']);
+	} else {
+		$order_id = (int) $request->get_param('order_id');
+		$order_key = trim((string) $request->get_param('key'));
+	}
 
 	if ($order_id <= 0 || !$order_key) {
 		return new WP_Error('invalid_order_confirmation', 'Order confirmation request is missing required details.', array('status' => 400));
