@@ -35,7 +35,8 @@ function OrderConfirmedContent() {
 
 export default function OrderConfirmedPage() {
   return (
-    <MotionProvider>
+    <>
+      <MotionProvider />
       <Header />
       <main className="flex-1">
         <Suspense>
@@ -43,6 +44,6 @@ export default function OrderConfirmedPage() {
         </Suspense>
       </main>
       <Footer />
-    </MotionProvider>
+    </>
   );
 }
