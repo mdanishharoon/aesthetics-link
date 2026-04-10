@@ -39,7 +39,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const checkoutUrl = getCheckoutDestination(baseUrl);
   const cartToken = request.cookies.get(CART_TOKEN_COOKIE)?.value?.trim();
-  const secret = process.env.WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET?.trim();
+  const secret =
+    process.env.WOOCOMMERCE_CHECKOUT_BRIDGE_SECRET?.trim() ||
+    process.env.AL_B2B_CHECKOUT_BRIDGE_SECRET?.trim();
 
   if (!cartToken) {
     return NextResponse.redirect(checkoutUrl, 307);
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   ).toString("base64url");
 
   const signature = signPayload(payload, secret);
-  const bridgeUrl = new URL(baseUrl);
+  const bridgeUrl = new URL(checkoutUrl);
   bridgeUrl.searchParams.set("al_b2b_checkout_bridge", payload);
   bridgeUrl.searchParams.set("sig", signature);
 

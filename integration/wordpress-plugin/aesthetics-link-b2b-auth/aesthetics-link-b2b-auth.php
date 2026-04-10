@@ -616,74 +616,111 @@ function al_b2b_fetch_store_cart_by_token($cart_token) {
 	return is_array($data) ? $data : null;
 }
 
+function al_b2b_log_checkout_bridge_error($message, $context = array()) {
+	$message = is_string($message) ? trim($message) : 'Checkout bridge error';
+	$context = is_array($context) ? $context : array();
+
+	if (function_exists('wc_get_logger')) {
+		$logger = wc_get_logger();
+		if ($logger && method_exists($logger, 'error')) {
+			$logger->error(
+				$message . (!empty($context) ? ' ' . wp_json_encode($context) : ''),
+				array('source' => 'al-b2b-checkout-bridge')
+			);
+			return;
+		}
+	}
+
+	error_log('[al-b2b-checkout-bridge] ' . $message . (!empty($context) ? ' ' . wp_json_encode($context) : '')); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+}
+
 function al_b2b_sync_wc_cart_from_store_token($cart_token) {
-	if (!function_exists('WC') || !function_exists('wc_load_cart') || !function_exists('wc_get_product')) {
-		return false;
-	}
-
-	$store_cart = al_b2b_fetch_store_cart_by_token($cart_token);
-	if (!$store_cart || !isset($store_cart['items']) || !is_array($store_cart['items'])) {
-		return false;
-	}
-
-	wc_load_cart();
-	if (!WC()->session || !WC()->cart) {
-		return false;
-	}
-
-	WC()->session->set_customer_session_cookie(true);
-	WC()->cart->empty_cart();
-
-	foreach ($store_cart['items'] as $item) {
-		if (!is_array($item)) {
-			continue;
+	try {
+		if (!function_exists('WC') || !function_exists('wc_load_cart') || !function_exists('wc_get_product')) {
+			return false;
 		}
 
-		$raw_product_id = isset($item['id']) ? (int) $item['id'] : 0;
-		$quantity = isset($item['quantity']) ? max(1, (int) $item['quantity']) : 1;
-
-		if ($raw_product_id <= 0 || $quantity <= 0) {
-			continue;
+		$store_cart = al_b2b_fetch_store_cart_by_token($cart_token);
+		if (!$store_cart || !isset($store_cart['items']) || !is_array($store_cart['items'])) {
+			return false;
 		}
 
-		$product = wc_get_product($raw_product_id);
-		if (!$product) {
-			continue;
+		wc_load_cart();
+		if (!WC()->session || !WC()->cart) {
+			return false;
 		}
 
-		$product_id = $raw_product_id;
-		$variation_id = 0;
-		$variation_data = array();
+		if (method_exists(WC()->session, 'set_customer_session_cookie')) {
+			WC()->session->set_customer_session_cookie(true);
+		}
+		WC()->cart->empty_cart();
 
-		if ($product->is_type('variation')) {
-			$variation_id = $raw_product_id;
-			$product_id = (int) $product->get_parent_id();
-			if ($product_id <= 0) {
+		foreach ($store_cart['items'] as $item) {
+			if (!is_array($item)) {
 				continue;
 			}
-			$variation_data = $product->get_variation_attributes();
+
+			$raw_product_id = isset($item['id']) ? (int) $item['id'] : 0;
+			$quantity = isset($item['quantity']) ? max(1, (int) $item['quantity']) : 1;
+
+			if ($raw_product_id <= 0 || $quantity <= 0) {
+				continue;
+			}
+
+			$product = wc_get_product($raw_product_id);
+			if (!$product) {
+				continue;
+			}
+
+			$product_id = $raw_product_id;
+			$variation_id = 0;
+			$variation_data = array();
+
+			if ($product->is_type('variation')) {
+				$variation_id = $raw_product_id;
+				$product_id = (int) $product->get_parent_id();
+				if ($product_id <= 0) {
+					continue;
+				}
+				$variation_data = $product->get_variation_attributes();
+			}
+
+			try {
+				WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation_data);
+			} catch (Throwable $item_error) {
+				al_b2b_log_checkout_bridge_error('Failed to add cart line item during bridge sync.', array(
+					'product_id' => $product_id,
+					'variation_id' => $variation_id,
+					'message' => $item_error->getMessage(),
+				));
+			}
 		}
 
-		WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation_data);
+		WC()->cart->calculate_totals();
+
+		if (method_exists(WC()->cart, 'set_session')) {
+			WC()->cart->set_session();
+		}
+
+		if (method_exists(WC()->session, 'save_data')) {
+			WC()->session->save_data();
+		}
+
+		if (function_exists('wc_setcookie')) {
+			$has_items = WC()->cart->get_cart_contents_count() > 0 ? '1' : '0';
+			wc_setcookie('woocommerce_items_in_cart', $has_items);
+			wc_setcookie('woocommerce_cart_hash', WC()->cart->get_cart_hash());
+		}
+
+		return true;
+	} catch (Throwable $error) {
+		al_b2b_log_checkout_bridge_error('Bridge cart sync crashed.', array(
+			'message' => $error->getMessage(),
+			'file' => $error->getFile(),
+			'line' => $error->getLine(),
+		));
+		return false;
 	}
-
-	WC()->cart->calculate_totals();
-
-	if (method_exists(WC()->cart, 'set_session')) {
-		WC()->cart->set_session();
-	}
-
-	if (method_exists(WC()->session, 'save_data')) {
-		WC()->session->save_data();
-	}
-
-	if (function_exists('wc_setcookie')) {
-		$has_items = WC()->cart->get_cart_contents_count() > 0 ? '1' : '0';
-		wc_setcookie('woocommerce_items_in_cart', $has_items);
-		wc_setcookie('woocommerce_cart_hash', WC()->cart->get_cart_hash());
-	}
-
-	return true;
 }
 
 function al_b2b_maybe_handle_checkout_bridge() {
@@ -699,16 +736,26 @@ function al_b2b_maybe_handle_checkout_bridge() {
 	}
 
 	$checkout_url = function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout');
-	$payload = al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature);
+	try {
+		$payload = al_b2b_parse_checkout_bridge_payload($encoded_payload, $signature);
 
-	if (!$payload || !isset($payload['cartToken'])) {
+		if (!$payload || !isset($payload['cartToken'])) {
+			wp_safe_redirect($checkout_url);
+			exit;
+		}
+
+		al_b2b_sync_wc_cart_from_store_token($payload['cartToken']);
+		wp_safe_redirect($checkout_url);
+		exit;
+	} catch (Throwable $error) {
+		al_b2b_log_checkout_bridge_error('Checkout bridge request crashed.', array(
+			'message' => $error->getMessage(),
+			'file' => $error->getFile(),
+			'line' => $error->getLine(),
+		));
 		wp_safe_redirect($checkout_url);
 		exit;
 	}
-
-	al_b2b_sync_wc_cart_from_store_token($payload['cartToken']);
-	wp_safe_redirect($checkout_url);
-	exit;
 }
 
 function al_b2b_is_wholesale_approved_user($user) {
