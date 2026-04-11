@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   useCallback,
@@ -76,10 +77,10 @@ function ProductCard({
       </div>
       <div className="product__content">
         <div className="product__card-img">
-          <img alt={title} src={imageSrc} />
+          <Image src={imageSrc} alt={title} fill sizes="200px" style={{ objectFit: "contain" }} />
         </div>
         <div className="product__card-img2">
-          <img alt="" src={imageHoverSrc} />
+          <Image src={imageHoverSrc} alt="" fill sizes="200px" style={{ objectFit: "contain" }} />
         </div>
         <div className="product__card-foot">
           <h3 className="product__card-title">{title}</h3>
@@ -398,12 +399,7 @@ export default function Explore() {
       {/* Bestsellers */}
       <div className="half__grid reveal-up" data-reveal>
         <div className="half__grid-img">
-          <img
-            ref={img1Ref}
-            alt="Bestsellers"
-            src="/images/explore-1.jpg"
-            className="parallax-image-asset"
-          />
+          <Image ref={img1Ref} alt="Bestsellers" src="/images/explore-1.jpg" fill sizes="50vw" style={{ objectFit: "cover" }} className="parallax-image-asset" />
         </div>
         <div className="half__grid-content">
           <div className="half__grid-text">
@@ -427,12 +423,7 @@ export default function Explore() {
       {/* New Arrivals */}
       <div className="half__grid reveal-up" data-reveal>
         <div className="half__grid-img">
-          <img
-            ref={img2Ref}
-            alt="New Arrivals"
-            src="/images/explore-2.jpg"
-            className="parallax-image-asset"
-          />
+          <Image ref={img2Ref} alt="New Arrivals" src="/images/explore-2.jpg" fill sizes="50vw" style={{ objectFit: "cover" }} className="parallax-image-asset" />
         </div>
         <div className="half__grid-content">
           <div className="half__grid-text">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParallax } from "@/hooks/useParallax";
 import AestheticsLinkWordmark from "@/components/AestheticsLinkWordmark";
@@ -20,14 +21,10 @@ export default function Footer() {
       <div className="footer__parallax">
         <div className="wrapper">
           <div className="media-img desktop footer__parallax-image">
-            <img
-              ref={footerImgRef}
-              alt="Footer"
-              src="/images/footer.jpg"
-            />
+            <Image ref={footerImgRef} alt="Footer" src="/images/footer.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} className="parallax-image-asset" />
           </div>
           <div className="media-img mobile footer__parallax-image">
-            <img alt="Footer" src="/images/footer-m.jpg" />
+            <Image alt="Footer" src="/images/footer-m.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} />
           </div>
         </div>
       </div>

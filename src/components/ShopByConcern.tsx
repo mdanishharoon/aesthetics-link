@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 const CONCERNS = [
@@ -52,7 +53,7 @@ export default function ShopByConcern() {
               className="concerns__tile"
             >
               <div className="concerns__tile-icon">
-                <img src={concern.icon} alt="" aria-hidden="true" />
+                <Image src={concern.icon} alt="" aria-hidden="true" width={32} height={32} unoptimized style={{ width: "100%", height: "100%", objectFit: "contain" }} />
               </div>
               <p className="concerns__tile-label">{concern.label}</p>
               <span className="concerns__tile-cta superscript">

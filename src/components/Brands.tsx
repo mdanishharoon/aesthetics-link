@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 const BRANDS = [
@@ -75,7 +76,7 @@ export default function Brands() {
               style={{ transitionDelay: `${i * 0.06}s` }}
             >
               <div className="brands__tile-img">
-                <img src={brand.image} alt={brand.name} />
+                <Image src={brand.image} alt={brand.name} fill sizes="(max-width: 768px) 50vw, 16vw" style={{ objectFit: "cover" }} />
               </div>
               <div className="brands__tile-overlay" />
               <div className="brands__tile-content">

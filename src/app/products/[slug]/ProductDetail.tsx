@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParallax } from "@/hooks/useParallax";
@@ -339,10 +340,13 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
           <div className="product-intro__image">
             <div className="product-intro__image-overlay" />
             <div className="product-intro__parallax">
-              <img
+              <Image
                 ref={heroImgRef}
                 src={product.images.hero}
                 alt={product.images.heroAlt}
+                fill
+                sizes="55vw"
+                style={{ objectFit: "cover" }}
                 className="parallax-image-asset"
               />
             </div>
@@ -363,10 +367,13 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
             </div>
 
             <div className="product-claim__image parallax-scroll">
-              <img
+              <Image
                 ref={textureRef}
                 src={product.images.texture}
                 alt={product.name}
+                fill
+                sizes="45vw"
+                style={{ objectFit: "cover" }}
                 className="parallax-image-asset"
               />
             </div>
@@ -381,10 +388,13 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
         <section id="product-benefits">
           <div className="half__grid reveal-up" data-reveal>
             <div className="half__grid-img">
-              <img
+              <Image
                 ref={detailImgRef}
                 src={product.images.detail}
                 alt={product.images.detailAlt}
+                fill
+                sizes="50vw"
+                style={{ objectFit: "cover" }}
                 className="parallax-image-asset"
               />
             </div>
@@ -406,7 +416,7 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
                     style={{ "--stagger-delay": `${i * 0.08}s` } as React.CSSProperties}
                   >
                     <div className="product-benefit__icon">
-                      <img alt={b.title} src={b.icon} />
+                      <Image src={b.icon} alt={b.title} width={32} height={32} unoptimized style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     </div>
                     <h3 className="product-benefit__title">{b.title}</h3>
                     <p className="product-benefit__desc">{b.desc}</p>

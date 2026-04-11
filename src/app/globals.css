@@ -2033,6 +2033,7 @@ section {
   height: 27rem;
   margin: -0.5rem auto 1rem;
   max-height: 45vh;
+  position: relative;
   transform: scale(1.2);
   transition: opacity 0.3s ease;
   width: 100%;
@@ -2789,6 +2790,7 @@ h5,
 .half__grid-content,
 .half__grid-img {
   overflow: hidden;
+  position: relative;
   width: 50%;
 }
 
@@ -5424,6 +5426,8 @@ h5,
   height: 4.2rem;
   border-radius: 10px;
   flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
 }
 
 .shop-cart-item__info {
@@ -6904,6 +6908,7 @@ h5,
   flex: 1;
   border-radius: 200px 200px 0 0;
   overflow: hidden;
+  position: relative;
   aspect-ratio: 3 / 4;
   background: var(--color-product-pure);
 }
@@ -6979,10 +6984,14 @@ h5,
 
 .about-image-tall {
   aspect-ratio: 3 / 4;
+  overflow: hidden;
+  position: relative;
 }
 
 .about-image-wide {
   aspect-ratio: 16 / 9;
+  overflow: hidden;
+  position: relative;
 }
 
 @media (max-width: 991.98px) {
@@ -7131,8 +7140,10 @@ h5,
   height: 10rem;
   aspect-ratio: 3/4;
   border-radius: 8px;
-  object-fit: cover;
+  overflow: hidden;
+  position: relative;
   background: var(--color-product-pure);
+  flex-shrink: 0;
 }
 
 .cart-item-details {

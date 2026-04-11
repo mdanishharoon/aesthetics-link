@@ -11,6 +11,7 @@ import {
   updateCartItemQuantity,
 } from "@/lib/storefront/client";
 import type { StorefrontCart } from "@/lib/storefront/types";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -201,12 +202,15 @@ export default function CartPage() {
             <div className="cart-items-list">
               {cart.items.map((item) => (
                 <div key={item.key} className="cart-item">
-                  <img
-                    src={item.image}
-                    alt={item.imageAlt}
-                    className="cart-item-image"
-                    style={{ background: item.accentBg }}
-                  />
+                  <div className="cart-item-image" style={{ background: item.accentBg }}>
+                    <Image
+                      src={item.image}
+                      alt={item.imageAlt}
+                      fill
+                      sizes="8rem"
+                      style={{ objectFit: "cover" }}
+                    />
+                  </div>
 
                   <div className="cart-item-details">
                     <h3 className="cart-item-title">{item.shortName}</h3>

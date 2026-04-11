@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Journal() {
@@ -24,10 +25,7 @@ export default function Journal() {
               >
                 <div className="journal__card-image">
                   <span className="ribbon">Featured</span>
-                  <img
-                    alt="Evidence-led skincare article"
-                    src="/images/journal-featured.jpg"
-                  />
+                  <Image alt="Evidence-led skincare article" src="/images/journal-featured.jpg" fill sizes="(max-width: 768px) 100vw, 50vw" style={{ objectFit: "cover" }} />
                 </div>
                 <div className="journal__card-text">
                   <h3 className="journal__card-title">
@@ -62,10 +60,7 @@ export default function Journal() {
             <div className="journal__card">
               <Link href="/journal/your-skincare-and-makeup-routine-impacts-your-well-being">
                 <div className="journal__card-image">
-                  <img
-                    alt="Skincare Routine"
-                    src="/images/journal-2.jpg"
-                  />
+                  <Image alt="Skincare Routine" src="/images/journal-2.jpg" fill sizes="50vw" style={{ objectFit: "cover" }} />
                 </div>
                 <div className="journal__card-text">
                   <h3 className="journal__card-title">
@@ -81,10 +76,7 @@ export default function Journal() {
             <div className="journal__card">
               <Link href="/journal/how-to-make-your-routine-more-eco-friendly">
                 <div className="journal__card-image">
-                  <img
-                    alt="Eco-Friendly Routine"
-                    src="/images/journal-3.jpg"
-                  />
+                  <Image alt="Eco-Friendly Routine" src="/images/journal-3.jpg" fill sizes="50vw" style={{ objectFit: "cover" }} />
                 </div>
                 <div className="journal__card-text">
                   <h3 className="journal__card-title">

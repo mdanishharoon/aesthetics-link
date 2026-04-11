@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -155,7 +156,9 @@ function CartSidebar({
             <ul className="shop-cart-sidebar__list">
               {cart.items.map((item) => (
                 <li key={item.key} className="shop-cart-item">
-                  <div className="shop-cart-item__swatch" style={{ background: item.accentBg }} />
+                  <div className="shop-cart-item__swatch" style={{ background: item.accentBg }}>
+                    <Image src={item.image} alt={item.imageAlt} fill sizes="3.5rem" style={{ objectFit: "cover" }} />
+                  </div>
                   <div className="shop-cart-item__info">
                     <p className="shop-cart-item__name">{item.name}</p>
                     <p className="shop-cart-item__price">{item.price}</p>
@@ -276,7 +279,7 @@ function ShopCard({
       <Link href={`/products/${product.slug}`} className="shop-product-card__inner">
         <div className="shop-product-card__image-wrap">
           <div className="shop-product-card__image-overlay" />
-          <img src={product.image} alt={product.imageAlt} className="shop-product-card__img" />
+          <Image src={product.image} alt={product.imageAlt} fill sizes="(max-width: 768px) 50vw, 25vw" style={{ objectFit: "cover" }} className="shop-product-card__img" />
           <span className="shop-product-card__category pill-fill">{product.category}</span>
         </div>
 
@@ -770,7 +773,7 @@ export default function ProductsClient({
           <div className="shop-hero__bg" />
 
           <div className="shop-hero__portrait reveal-up" data-reveal>
-            <img src="/images/skincare-hero-portrait.png" alt="Skincare Portrait" />
+            <Image src="/images/skincare-hero-portrait.png" alt="Skincare Portrait" width={400} height={600} style={{ height: "100%", width: "auto", objectFit: "contain", objectPosition: "bottom center" }} />
           </div>
 
           <div className="container shop-hero__content">
@@ -881,7 +884,7 @@ export default function ProductsClient({
               ].map((item) => (
                 <div key={item.label} className="shop-ethos__item">
                   <div className="shop-ethos__icon">
-                    <img src={item.icon} alt={item.label} />
+                    <Image src={item.icon} alt={item.label} width={38} height={38} unoptimized style={{ width: "2.4rem", height: "2.4rem", objectFit: "contain" }} />
                   </div>
                   <p className="shop-ethos__label superscript">{item.label}</p>
                 </div>

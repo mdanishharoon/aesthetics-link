@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
@@ -38,7 +39,7 @@ export default function About() {
                     <div className="container">
                         <div className="about-mission__grid">
                             <div className="about-mission__image">
-                                <img src="https://images.unsplash.com/photo-1615397323067-160dd80e2f5e?w=800&q=80" alt="AestheticsLink Philosophy" />
+                                <Image src="https://images.unsplash.com/photo-1615397323067-160dd80e2f5e?w=800&q=80" alt="AestheticsLink Philosophy" fill sizes="(max-width: 991px) 100vw, 40vw" style={{ objectFit: "cover" }} />
                             </div>
                             <div className="about-mission__content">
                                 <h2 className="about-heading font-serif">
@@ -73,10 +74,10 @@ export default function About() {
 
                         <div className="about-image-collage mt-4">
                             <div className="about-image-wide">
-                                <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1200&q=80" alt="Lab Texture" />
+                                <Image src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1200&q=80" alt="Lab Texture" fill sizes="(max-width: 991px) 100vw, 60vw" style={{ objectFit: "cover", borderRadius: "8px" }} />
                             </div>
                             <div className="about-image-tall">
-                                <img src="https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=800&q=80" alt="Clinical Precision" />
+                                <Image src="https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=800&q=80" alt="Clinical Precision" fill sizes="(max-width: 991px) 100vw, 33vw" style={{ objectFit: "cover", borderRadius: "8px" }} />
                             </div>
                         </div>
                     </div>

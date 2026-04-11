@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useParallax } from "@/hooks/useParallax";
 
 function InstagramIcon() {
@@ -20,10 +21,13 @@ export default function Connect() {
         <div className="row gx-md-0">
           <div className="col-md-2 d-none d-md-flex flex-column justify-content-between">
             <div className="media-img parallax-scroll">
-              <img
+              <Image
                 ref={leftImgRef}
                 alt="Connect 1"
                 src="/images/connect-1.jpg"
+                fill
+                sizes="16vw"
+                style={{ objectFit: "cover" }}
                 className="parallax-image-asset"
               />
             </div>
@@ -38,10 +42,10 @@ export default function Connect() {
             </h2>
             <div className="connect__image">
               <div className="media-img desktop">
-                <img alt="Connect" src="/images/connect.jpg" />
+                <Image alt="Connect" src="/images/connect.jpg" fill sizes="66vw" style={{ objectFit: "cover" }} />
               </div>
               <div className="media-img mobile">
-                <img alt="Connect" src="/images/connect-m.jpg" />
+                <Image alt="Connect" src="/images/connect-m.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} />
               </div>
             </div>
             <h2 className="connect__title-2 text-center font-serif">
@@ -67,10 +71,13 @@ export default function Connect() {
 
           <div className="col-md-2 d-flex align-items-end d-none d-md-block">
             <div className="media-img connect__end w-full parallax-scroll">
-              <img
+              <Image
                 ref={rightImgRef}
                 alt="Connect 3"
                 src="/images/IMG_7461.jpg"
+                fill
+                sizes="16vw"
+                style={{ objectFit: "cover" }}
                 className="parallax-image-asset"
               />
             </div>

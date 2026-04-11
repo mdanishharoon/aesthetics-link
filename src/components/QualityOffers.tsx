@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParallax } from "@/hooks/useParallax";
 
@@ -31,7 +32,7 @@ export default function QualityOffers() {
             />
           </svg>
           <div className="media-img quiz__product-img">
-            <img alt="Product" src="/images/texture.png" />
+            <Image alt="Product" src="/images/texture.png" fill sizes="33vw" style={{ objectFit: "cover" }} />
           </div>
           <div className="half__grid-text">
             <div className="pill">QUALITY</div>
@@ -64,12 +65,7 @@ export default function QualityOffers() {
             </Link>
           </div>
           <div className="media-img parallax-image">
-            <img
-              ref={offerImgRef}
-              alt="Offer"
-              src="/images/offer.jpg"
-              className="parallax-image-asset"
-            />
+            <Image ref={offerImgRef} alt="Offer" src="/images/offer.jpg" fill sizes="50vw" style={{ objectFit: "cover" }} className="parallax-image-asset" />
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef } from "react";
 import { useParallaxMultiple } from "@/hooks/useParallax";
 
@@ -44,7 +45,7 @@ function IngredientItem({
       data-parallax-speed={speed ?? 3}
     >
       <div className="ingredients__item-icon">
-        <img alt={title} src={icon} />
+        <Image src={icon} alt={title} width={40} height={40} unoptimized style={{ width: "100%", height: "100%", objectFit: "contain" }} />
       </div>
       <h3 className="ingredients__item-title text-none">{title}</h3>
       <p className="ingredients__item-desc">{desc}</p>
@@ -77,25 +78,21 @@ export default function Ingredients() {
             data-parallax
             data-parallax-speed="0.14"
           >
-            <img alt="Leaf" src="/images/leaf.png" />
+            <Image src="/images/leaf.png" alt="Leaf" width={272} height={380} style={{ width: "100%", height: "auto" }} />
           </div>
           <div
             className="ingredients__image-2 d-none d-md-block parallax-scroll"
             data-parallax
             data-parallax-speed="0.14"
           >
-            <img alt="Empress" src="/images/empress.png" />
+            <Image src="/images/empress.png" alt="Empress" width={272} height={380} style={{ width: "100%", height: "auto" }} />
           </div>
           <div
             className="ingredients__image-wrapper parallax-scroll"
             data-parallax
             data-parallax-speed="-0.035"
           >
-            <img
-              alt="Ingredients"
-              src="/images/ingredients-clip.jpg"
-              className="ingredients__image"
-            />
+            <Image src="/images/ingredients-clip.jpg" alt="Ingredients" fill sizes="70vw" style={{ objectFit: "cover" }} className="ingredients__image" />
           </div>
           <div className="ingredients__firstrow">
             <IngredientItem {...INGREDIENTS[0]} speed={0.09} />
