@@ -1,20 +1,39 @@
 "use client";
 
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParallax } from "@/hooks/useParallax";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
+import CartSidebar from "@/components/CartSidebar";
 import { getWholesalePrices } from "@/lib/auth/client";
 import { useAuth } from "@/components/AuthProvider";
-import { addCartItem, addVariableCartItem } from "@/lib/storefront/client";
+import {
+  addCartItem,
+  addVariableCartItem,
+  fetchCart,
+  removeCartItem,
+  updateCartItemQuantity,
+} from "@/lib/storefront/client";
 import type {
+  StorefrontCart,
   StorefrontDetailProduct,
   StorefrontVariationAttribute,
 } from "@/lib/storefront/types";
 import { useMemo, useState } from "react";
+
+const EMPTY_CART: StorefrontCart = {
+  items: [],
+  itemCount: 0,
+  subtotal: "$0.00",
+  shipping: "$0.00",
+  tax: "$0.00",
+  total: "$0.00",
+  currencySymbol: "$",
+  needsShipping: false,
+};
 
 function ArrowLongIcon() {
   return (
@@ -111,12 +130,75 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
   const heroImgRef = useParallax<HTMLImageElement>(0.12);
   const detailImgRef = useParallax<HTMLImageElement>(0.15);
   const textureRef = useParallax<HTMLImageElement>(0.18);
+  const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [addStatus, setAddStatus] = useState<{ tone: "success" | "error"; message: string } | null>(null);
+  const [cartOpen, setCartOpen] = useState(false);
   const variationConfig = product.variableConfig ?? null;
   const [variationSelection, setVariationSelection] = useState<Record<string, string>>(
     product.variableConfig?.defaults ?? {},
   );
+
+  const { data: cart = EMPTY_CART } = useQuery<StorefrontCart>({
+    queryKey: ["storefront", "cart"],
+    queryFn: fetchCart,
+    enabled: false,
+  });
+
+  const removeCartMutation = useMutation({
+    mutationFn: (key: string) => removeCartItem(key),
+    onMutate: async (key) => {
+      await queryClient.cancelQueries({ queryKey: ["storefront", "cart"] });
+      const snapshot = queryClient.getQueryData<StorefrontCart>(["storefront", "cart"]);
+      if (snapshot) {
+        const removed = snapshot.items.find((item) => item.key === key);
+        queryClient.setQueryData<StorefrontCart>(["storefront", "cart"], {
+          ...snapshot,
+          items: snapshot.items.filter((item) => item.key !== key),
+          itemCount: snapshot.itemCount - (removed?.quantity ?? 1),
+        });
+      }
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(["storefront", "cart"], context.snapshot);
+      }
+    },
+    onSuccess: (nextCart) => {
+      queryClient.setQueryData(["storefront", "cart"], nextCart);
+    },
+  });
+
+  const updateCartMutation = useMutation({
+    mutationFn: ({ key, quantity }: { key: string; quantity: number }) =>
+      updateCartItemQuantity(key, quantity),
+    onMutate: async ({ key, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: ["storefront", "cart"] });
+      const snapshot = queryClient.getQueryData<StorefrontCart>(["storefront", "cart"]);
+      if (snapshot) {
+        queryClient.setQueryData<StorefrontCart>(["storefront", "cart"], {
+          ...snapshot,
+          items: snapshot.items.map((item) => (item.key === key ? { ...item, quantity } : item)),
+          itemCount: snapshot.items.reduce(
+            (sum, item) => sum + (item.key === key ? quantity : item.quantity),
+            0,
+          ),
+        });
+      }
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(["storefront", "cart"], context.snapshot);
+      }
+    },
+    onSuccess: (nextCart) => {
+      queryClient.setQueryData(["storefront", "cart"], nextCart);
+    },
+  });
+
+  const cartBusy = removeCartMutation.isPending || updateCartMutation.isPending;
   const isVariableProduct = product.hasOptions === true || product.productType === "variable";
   const isOutOfStock = product.inStock === false || product.stockStatus === "outofstock";
   const stockMessage = product.stockMessage || "This product is currently out of stock and unavailable.";
@@ -233,7 +315,11 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
       } else {
         await addCartItem(product.wooId, 1);
       }
+      // Refresh cart cache so Header count updates and sidebar shows current state
+      const freshCart = await fetchCart();
+      queryClient.setQueryData(["storefront", "cart"], freshCart);
       setAddStatus({ tone: "success", message: "Added to bag" });
+      setCartOpen(true);
     } catch (error) {
       setAddStatus({
         tone: "error",
@@ -244,10 +330,28 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
     }
   };
 
+  const handleRemoveFromCart = async (key: string): Promise<void> => {
+    await removeCartMutation.mutateAsync(key);
+  };
+
+  const handleUpdateQty = async (key: string, nextQty: number): Promise<void> => {
+    await updateCartMutation.mutateAsync({ key, quantity: nextQty });
+  };
+
   return (
     <div className="product-page">
       <MotionProvider />
       <Header />
+
+      {cartOpen && (
+        <CartSidebar
+          cart={cart}
+          onClose={() => setCartOpen(false)}
+          onRemove={handleRemoveFromCart}
+          onQty={handleUpdateQty}
+          busy={cartBusy}
+        />
+      )}
 
       <main>
         {/* ── 1. HERO ─────────────────────────────────────────────── */}
