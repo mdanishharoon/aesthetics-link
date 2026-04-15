@@ -13,32 +13,48 @@ function secureCompare(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
-function isAuthorized(req: NextRequest, body: string): boolean {
+type AuthResult =
+  | { ok: true }
+  | { ok: false; reason: "no_signature_header" | "no_webhook_secret" | "signature_mismatch" | "no_token" };
+
+function checkAuthorization(req: NextRequest, body: string): AuthResult {
   const staticToken = process.env.REVALIDATE_SECRET?.trim();
   const providedToken =
     req.headers.get("x-revalidate-token") ??
     req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
 
   if (staticToken && providedToken && secureCompare(staticToken, providedToken.trim())) {
-    return true;
+    return { ok: true };
   }
 
   const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET?.trim();
   const signature = req.headers.get("x-wc-webhook-signature")?.trim();
 
-  if (!webhookSecret || !signature) {
-    return false;
+  if (!webhookSecret) {
+    return { ok: false, reason: "no_webhook_secret" };
+  }
+
+  if (!signature) {
+    return { ok: false, reason: "no_signature_header" };
   }
 
   const digest = crypto.createHmac("sha256", webhookSecret).update(body, "utf8").digest("base64");
-  return secureCompare(digest, signature);
+  if (!secureCompare(digest, signature)) {
+    return { ok: false, reason: "signature_mismatch" };
+  }
+
+  return { ok: true };
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = await req.text();
 
-  if (!isAuthorized(req, body)) {
-    return NextResponse.json({ ok: false, message: "Unauthorized revalidation request." }, { status: 401 });
+  const auth = checkAuthorization(req, body);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, message: "Unauthorized revalidation request.", reason: auth.reason },
+      { status: 401 },
+    );
   }
 
   revalidateTag("woo:products", { expire: 0 });
