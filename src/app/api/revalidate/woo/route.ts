@@ -51,6 +51,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const auth = checkAuthorization(req, body);
   if (!auth.ok) {
+    // Log to server console (visible in Next.js terminal, not browser)
+    const webhookSecret = process.env.WOOCOMMERCE_WEBHOOK_SECRET?.trim();
+    const signature = req.headers.get("x-wc-webhook-signature");
+    console.warn("[woo-webhook] 401 auth failed", {
+      reason: auth.reason,
+      secretLength: webhookSecret?.length ?? 0,
+      signaturePresent: Boolean(signature),
+      signatureLength: signature?.length ?? 0,
+      bodyLength: body.length,
+      bodyPreview: body.slice(0, 80),
+    });
     return NextResponse.json(
       { ok: false, message: "Unauthorized revalidation request.", reason: auth.reason },
       { status: 401 },
