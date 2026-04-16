@@ -182,6 +182,18 @@ function saveCachedCartSnapshot(cart: StorefrontCart): void {
   }
 }
 
+export function clearCachedCartSnapshot(): void {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(CART_CACHE_KEY);
+  } catch {
+    // Ignore storage write failures (private mode/quota/security policy).
+  }
+}
+
 export function getCachedCartSnapshot(): StorefrontCart | null {
   if (!canUseStorage()) {
     return null;
@@ -443,4 +455,3 @@ export async function lookupGuestOrder(orderNumber: string, email: string): Prom
 
   return payload as StorefrontOrderLookupResult;
 }
-

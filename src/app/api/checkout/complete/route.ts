@@ -9,8 +9,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const receiptToken = (searchParams.get("receipt") ?? "").trim();
 
   const confirmUrl = new URL("/order-confirmed", request.nextUrl.origin);
+  confirmUrl.searchParams.set("just_completed", "1");
 
   const response = NextResponse.redirect(confirmUrl, 302);
+  response.headers.set("Cache-Control", "no-store");
 
   response.cookies.set(CART_TOKEN_COOKIE, "", { maxAge: 0, path: "/" });
   response.cookies.set(NONCE_TOKEN_COOKIE, "", { maxAge: 0, path: "/" });

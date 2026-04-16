@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 
+import CheckoutCompletionCartReset from "@/components/CheckoutCompletionCartReset";
 import { getOrderConfirmation } from "@/lib/storefront/server";
 import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
 
@@ -223,6 +224,7 @@ export default async function OrderConfirmedPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
+  const justCompleted = getSingleParam(params, "just_completed") === "1";
   const receiptFromQuery = getSingleParam(params, "receipt");
   const cookieStore = await cookies();
   const receiptFromCookie = cookieStore.get(RECEIPT_TOKEN_COOKIE)?.value?.trim() ?? "";
@@ -240,6 +242,7 @@ export default async function OrderConfirmedPage({
 
   return (
     <main className="order-receipt-page">
+      <CheckoutCompletionCartReset shouldReset={justCompleted} />
       <div className="order-receipt-page__frame container">
         {order ? (
           <OrderReceipt order={order} />
