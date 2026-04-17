@@ -132,7 +132,10 @@ function normalizePriceLabel(value: string | null | undefined): string {
     return "";
   }
 
-  return decodeEntities(value).replace(/\s+/g, " ").trim();
+  let normalized = decodeEntities(value).replace(/\s+/g, " ").trim();
+  normalized = normalized.replace(/^price range:\s*/i, "");
+  normalized = normalized.replace(/\s+through\s+/i, " - ");
+  return normalized.trim();
 }
 
 export default function ProductDetail({ product }: { product: StorefrontDetailProduct }) {

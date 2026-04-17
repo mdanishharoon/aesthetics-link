@@ -2510,13 +2510,26 @@ function al_b2b_get_wholesale_prices($request) {
 
 		$is_variable_product = method_exists($product, 'is_type') && $product->is_type('variable');
 		if ($is_variable_product) {
-			$range_label = method_exists($product, 'get_price_html')
-				? al_b2b_normalize_price_label($product->get_price_html())
-				: '';
+			$min_variation_price = method_exists($product, 'get_variation_price')
+				? al_b2b_normalize_price_number($product->get_variation_price('min', true))
+				: null;
+			$max_variation_price = method_exists($product, 'get_variation_price')
+				? al_b2b_normalize_price_number($product->get_variation_price('max', true))
+				: null;
 
-			$current_label = $range_label !== ''
-				? $range_label
-				: al_b2b_normalize_price_label(wc_price($current));
+			if ($min_variation_price === null) {
+				$min_variation_price = $current;
+			}
+			if ($max_variation_price === null) {
+				$max_variation_price = $min_variation_price;
+			}
+
+			$min_label = al_b2b_normalize_price_label(wc_price($min_variation_price));
+			$max_label = al_b2b_normalize_price_label(wc_price($max_variation_price));
+
+			$current_label = $min_label !== '' && $max_label !== '' && $min_variation_price < $max_variation_price
+				? "{$min_label} - {$max_label}"
+				: ($min_label !== '' ? $min_label : al_b2b_normalize_price_label(wc_price($current)));
 			$regular_label = al_b2b_normalize_price_label(wc_price($regular));
 			$has_discount = false;
 		} else {

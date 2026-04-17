@@ -68,7 +68,10 @@ function normalizePriceLabel(value: string | null | undefined): string {
     return "";
   }
 
-  return decodeEntities(value).replace(/\s+/g, " ").trim();
+  let normalized = decodeEntities(value).replace(/\s+/g, " ").trim();
+  normalized = normalized.replace(/^price range:\s*/i, "");
+  normalized = normalized.replace(/\s+through\s+/i, " - ");
+  return normalized.trim();
 }
 
 const EMPTY_CART: StorefrontCart = {
@@ -204,11 +207,6 @@ function ShopCard({
               ) : null}
               <span>{visiblePrice}</span>
             </p>
-            {canSeeWholesalePrice ? (
-              <span style={{ fontSize: "0.66rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--color-gray2)" }}>
-                Wholesale
-              </span>
-            ) : null}
           </div>
         </div>
       </Link>
