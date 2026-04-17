@@ -10,6 +10,7 @@ import MotionProvider from "@/components/MotionProvider";
 import CartSidebar from "@/components/CartSidebar";
 import { getWholesalePrices } from "@/lib/auth/client";
 import { useAuth } from "@/components/AuthProvider";
+import { decodeEntities } from "@/lib/utils/text";
 import {
   addCartItem,
   addVariableCartItem,
@@ -126,6 +127,14 @@ function resolveVariationEntryValue(
   return null;
 }
 
+function normalizePriceLabel(value: string | null | undefined): string {
+  if (typeof value !== "string" || !value.trim()) {
+    return "";
+  }
+
+  return decodeEntities(value).replace(/\s+/g, " ").trim();
+}
+
 export default function ProductDetail({ product }: { product: StorefrontDetailProduct }) {
   const heroImgRef = useParallax<HTMLImageElement>(0.12);
   const detailImgRef = useParallax<HTMLImageElement>(0.15);
@@ -212,10 +221,27 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
       user.wholesaleApproved,
   );
 
+  const variationAttributes = useMemo(() => variationConfig?.attributes ?? [], [variationConfig]);
+  const variationEntries = useMemo(() => variationConfig?.variations ?? [], [variationConfig]);
+  const wholesalePriceIds = useMemo(() => {
+    const ids = new Set<number>();
+
+    if (Number.isInteger(product.wooId) && (product.wooId as number) > 0) {
+      ids.add(product.wooId as number);
+    }
+
+    for (const entry of variationEntries) {
+      if (Number.isInteger(entry.id) && (entry.id as number) > 0) {
+        ids.add(entry.id as number);
+      }
+    }
+
+    return Array.from(ids).slice(0, 100);
+  }, [product.wooId, variationEntries]);
   const wholesalePricesQuery = useQuery({
-    queryKey: ["auth", "wholesale-prices", String(product.wooId ?? 0)],
-    queryFn: () => getWholesalePrices([product.wooId as number]),
-    enabled: isWholesaleViewer && Boolean(product.wooId && product.wooId > 0),
+    queryKey: ["auth", "wholesale-prices", wholesalePriceIds.join(",")],
+    queryFn: () => getWholesalePrices(wholesalePriceIds),
+    enabled: isWholesaleViewer && wholesalePriceIds.length > 0,
   });
 
   const wholesalePriceEntry = wholesalePricesQuery.data?.prices[String(product.wooId)];
@@ -225,16 +251,6 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
       wholesalePriceEntry &&
       wholesalePriceEntry.source === "wholesale",
   );
-  const displayPrice = isWholesalePrice ? wholesalePriceEntry?.priceLabel || product.price : product.price;
-  const displayRegularPrice = isWholesalePrice
-    ? wholesalePriceEntry?.hasDiscount
-      ? wholesalePriceEntry.regularPriceLabel
-      : null
-    : product.regularPrice ?? null;
-
-
-  const variationAttributes = useMemo(() => variationConfig?.attributes ?? [], [variationConfig]);
-  const variationEntries = useMemo(() => variationConfig?.variations ?? [], [variationConfig]);
   const optionsReady = !isVariableProduct || variationAttributes.length > 0;
   const missingSelections = variationAttributes.filter((attribute) => !variationSelection[attribute.id]);
 
@@ -269,12 +285,35 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
   const canAddWithSelection =
     !isVariableProduct ||
     (optionsReady && missingSelections.length === 0 && !selectedVariationOutOfStock);
-  const effectivePrice =
-    !isWholesalePrice && selectedVariation?.price ? selectedVariation.price : displayPrice;
-  const effectiveRegularPrice =
-    !isWholesalePrice && selectedVariation
-      ? selectedVariation.regularPrice ?? null
-      : displayRegularPrice;
+  const selectedVariationWholesaleEntry =
+    selectedVariation && Number.isInteger(selectedVariation.id) && (selectedVariation.id as number) > 0
+      ? wholesalePricesQuery.data?.prices[String(selectedVariation.id)]
+      : null;
+  const wholesaleBasePrice = normalizePriceLabel(wholesalePriceEntry?.priceLabel) || product.price;
+  const wholesaleBaseRegularPrice = wholesalePriceEntry?.hasDiscount
+    ? normalizePriceLabel(wholesalePriceEntry.regularPriceLabel)
+    : null;
+  const wholesaleVariationPrice =
+    selectedVariationWholesaleEntry && selectedVariationWholesaleEntry.source === "wholesale"
+      ? normalizePriceLabel(selectedVariationWholesaleEntry.priceLabel)
+      : null;
+  const wholesaleVariationRegularPrice =
+    selectedVariationWholesaleEntry &&
+    selectedVariationWholesaleEntry.source === "wholesale" &&
+    selectedVariationWholesaleEntry.hasDiscount
+      ? normalizePriceLabel(selectedVariationWholesaleEntry.regularPriceLabel)
+      : null;
+  const displayPrice = isWholesalePrice
+    ? wholesaleVariationPrice ?? selectedVariation?.price ?? wholesaleBasePrice
+    : product.price;
+  const displayRegularPrice = isWholesalePrice
+    ? wholesaleVariationRegularPrice ?? selectedVariation?.regularPrice ?? wholesaleBaseRegularPrice
+    : product.regularPrice ?? null;
+
+  const effectivePrice = !isWholesalePrice && selectedVariation?.price ? selectedVariation.price : displayPrice;
+  const effectiveRegularPrice = !isWholesalePrice && selectedVariation
+    ? selectedVariation.regularPrice ?? null
+    : displayRegularPrice;
 
   const handleAddToBag = async () => {
     if (!product.wooId || adding || isOutOfStock) {

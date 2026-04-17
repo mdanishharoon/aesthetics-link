@@ -9,6 +9,7 @@ import CartSidebar from "@/components/CartSidebar";
 import { useStorefrontNavigation } from "@/components/StorefrontNavigationProvider";
 import { getWholesalePrices } from "@/lib/auth/client";
 import { useAuth } from "@/components/AuthProvider";
+import { decodeEntities } from "@/lib/utils/text";
 import {
   addCartItem,
   fetchCart,
@@ -60,6 +61,14 @@ function extractNavFilterOptions(
   }
 
   return Array.from(deduped.entries()).map(([slug, label]) => ({ slug, label }));
+}
+
+function normalizePriceLabel(value: string | null | undefined): string {
+  if (typeof value !== "string" || !value.trim()) {
+    return "";
+  }
+
+  return decodeEntities(value).replace(/\s+/g, " ").trim();
 }
 
 const EMPTY_CART: StorefrontCart = {
@@ -326,8 +335,8 @@ export default function ProductsClient({
       return {
         ...product,
         retailPrice: product.retailPrice ?? product.price,
-        price: entry.priceLabel,
-        regularPrice: entry.hasDiscount ? entry.regularPriceLabel : null,
+        price: normalizePriceLabel(entry.priceLabel) || (product.retailPrice ?? product.price),
+        regularPrice: entry.hasDiscount ? normalizePriceLabel(entry.regularPriceLabel) : null,
         hasDiscount: entry.hasDiscount,
         priceSource: "wholesale" as const,
       };

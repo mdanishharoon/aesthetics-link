@@ -2438,6 +2438,19 @@ function al_b2b_normalize_price_number($value) {
 	return (float) $value;
 }
 
+function al_b2b_normalize_price_label($value) {
+	$label = wp_strip_all_tags((string) $value);
+	$charset = get_bloginfo('charset');
+	if (!$charset || !is_string($charset)) {
+		$charset = 'UTF-8';
+	}
+
+	$label = html_entity_decode($label, ENT_QUOTES | ENT_HTML5, $charset);
+	$label = preg_replace('/\s+/u', ' ', $label);
+
+	return is_string($label) ? trim($label) : '';
+}
+
 function al_b2b_get_wholesale_prices($request) {
 	$user = al_b2b_authenticate_request($request);
 	if (is_wp_error($user)) {
@@ -2494,6 +2507,22 @@ function al_b2b_get_wholesale_prices($request) {
 		$current_label = wp_strip_all_tags(wc_price($current));
 		$regular_label = wp_strip_all_tags(wc_price($regular));
 		$has_discount = $current < $regular;
+
+		$is_variable_product = method_exists($product, 'is_type') && $product->is_type('variable');
+		if ($is_variable_product) {
+			$range_label = method_exists($product, 'get_price_html')
+				? al_b2b_normalize_price_label($product->get_price_html())
+				: '';
+
+			$current_label = $range_label !== ''
+				? $range_label
+				: al_b2b_normalize_price_label(wc_price($current));
+			$regular_label = al_b2b_normalize_price_label(wc_price($regular));
+			$has_discount = false;
+		} else {
+			$current_label = al_b2b_normalize_price_label($current_label);
+			$regular_label = al_b2b_normalize_price_label($regular_label);
+		}
 
 		$prices[(string) $product_id] = array(
 			'productId' => $product_id,
