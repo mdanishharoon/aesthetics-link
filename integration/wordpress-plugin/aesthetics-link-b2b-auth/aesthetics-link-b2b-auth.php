@@ -1911,6 +1911,10 @@ function al_b2b_map_order_summary($order) {
 		return null;
 	}
 
+	if (al_b2b_is_hidden_order_status($order->get_status())) {
+		return null;
+	}
+
 	$currency = method_exists($order, 'get_currency') ? (string) $order->get_currency() : '';
 	$line_items = array();
 
@@ -1947,6 +1951,76 @@ function al_b2b_map_order_summary($order) {
 function al_b2b_normalize_lookup_value($value) {
 	$value = strtoupper(trim((string) $value));
 	return preg_replace('/[^A-Z0-9-]/', '', $value);
+}
+
+function al_b2b_normalize_order_status_slug($status) {
+	$status = sanitize_key((string) $status);
+	if (strpos($status, 'wc-') === 0) {
+		$status = substr($status, 3);
+	}
+
+	return $status;
+}
+
+function al_b2b_get_hidden_order_statuses() {
+	$default = array(
+		'checkout-draft',
+		'draft',
+		'auto-draft',
+	);
+
+	$statuses = apply_filters('al_b2b_hidden_order_statuses', $default);
+	if (!is_array($statuses)) {
+		$statuses = $default;
+	}
+
+	$normalized = array();
+	foreach ($statuses as $status) {
+		$slug = al_b2b_normalize_order_status_slug($status);
+		if ($slug !== '') {
+			$normalized[$slug] = true;
+		}
+	}
+
+	return array_keys($normalized);
+}
+
+function al_b2b_is_hidden_order_status($status) {
+	$slug = al_b2b_normalize_order_status_slug($status);
+	if ($slug === '') {
+		return false;
+	}
+
+	return in_array($slug, al_b2b_get_hidden_order_statuses(), true);
+}
+
+function al_b2b_get_visible_order_statuses_for_query() {
+	if (!function_exists('wc_get_order_statuses')) {
+		return array(
+			'pending',
+			'processing',
+			'on-hold',
+			'completed',
+			'cancelled',
+			'refunded',
+			'failed',
+		);
+	}
+
+	$hidden = al_b2b_get_hidden_order_statuses();
+	$visible = array();
+	$all_statuses = wc_get_order_statuses();
+
+	foreach (array_keys($all_statuses) as $status_key) {
+		$slug = al_b2b_normalize_order_status_slug($status_key);
+		if ($slug === '' || in_array($slug, $hidden, true)) {
+			continue;
+		}
+
+		$visible[] = $slug;
+	}
+
+	return array_values(array_unique($visible));
 }
 
 function al_b2b_map_user_address($user_id, $type, $email_fallback = '') {
@@ -2046,6 +2120,10 @@ function al_b2b_build_order_confirmation_payload($order) {
 		return null;
 	}
 
+	if (al_b2b_is_hidden_order_status($order->get_status())) {
+		return null;
+	}
+
 	$currency = method_exists($order, 'get_currency') ? (string) $order->get_currency() : '';
 	$items = array();
 
@@ -2089,9 +2167,11 @@ function al_b2b_build_order_confirmation_payload($order) {
 function al_b2b_fetch_user_orders($user_id, $limit) {
 	$limit = (int) $limit;
 	$limit = $limit > 0 ? min(24, $limit) : 12;
+	$statuses = al_b2b_get_visible_order_statuses_for_query();
 
 	$orders = wc_get_orders(array(
 		'customer_id' => (int) $user_id,
+		'status' => $statuses,
 		'limit' => $limit,
 		'orderby' => 'date',
 		'order' => 'DESC',
@@ -2184,6 +2264,10 @@ function al_b2b_get_authenticated_order_detail($request) {
 		return new WP_Error('order_not_found', 'Order not found.', array('status' => 404));
 	}
 
+	if (al_b2b_is_hidden_order_status($order->get_status())) {
+		return new WP_Error('order_not_found', 'Order not found.', array('status' => 404));
+	}
+
 	if ((int) $order->get_customer_id() !== (int) $user->ID) {
 		return new WP_Error('forbidden_order', 'Order could not be verified.', array('status' => 404));
 	}
@@ -2217,6 +2301,7 @@ function al_b2b_lookup_guest_order($request) {
 	$target = al_b2b_normalize_lookup_value($order_number);
 	$orders = wc_get_orders(array(
 		'billing_email' => $email,
+		'status' => al_b2b_get_visible_order_statuses_for_query(),
 		'limit' => 20,
 		'orderby' => 'date',
 		'order' => 'DESC',
@@ -2282,6 +2367,10 @@ function al_b2b_get_order_confirmation($request) {
 	$order = wc_get_order($order_id);
 	if (!$order) {
 		return new WP_Error('order_not_found', 'Order not found.', array('status' => 404));
+	}
+
+	if (al_b2b_is_hidden_order_status($order->get_status())) {
+		return new WP_Error('invalid_order_key', 'Order confirmation could not be verified.', array('status' => 404));
 	}
 
 	if (!hash_equals((string) $order->get_order_key(), $order_key)) {
@@ -3098,6 +3187,143 @@ function al_b2b_normalize_price_label($value) {
 	return is_string($label) ? trim($label) : '';
 }
 
+function al_b2b_format_price_range_label($min_price, $max_price, $fallback_price = null) {
+	$min_price = al_b2b_normalize_price_number($min_price);
+	$max_price = al_b2b_normalize_price_number($max_price);
+	$fallback_price = al_b2b_normalize_price_number($fallback_price);
+
+	if ($min_price === null && $max_price === null) {
+		if ($fallback_price === null) {
+			return '';
+		}
+
+		return al_b2b_normalize_price_label(wc_price($fallback_price));
+	}
+
+	if ($min_price === null) {
+		$min_price = $max_price;
+	}
+	if ($max_price === null) {
+		$max_price = $min_price;
+	}
+
+	$min_label = al_b2b_normalize_price_label(wc_price($min_price));
+	$max_label = al_b2b_normalize_price_label(wc_price($max_price));
+
+	if ($min_label === '' && $fallback_price !== null) {
+		return al_b2b_normalize_price_label(wc_price($fallback_price));
+	}
+
+	if ($min_label !== '' && $max_label !== '' && $min_price < $max_price) {
+		return "{$min_label} - {$max_label}";
+	}
+
+	return $min_label !== '' ? $min_label : $max_label;
+}
+
+function al_b2b_get_variable_price_bounds($product, $use_wholesale_prices = false) {
+	if (!$product || !is_a($product, 'WC_Product')) {
+		return null;
+	}
+
+	$is_variable = method_exists($product, 'is_type') && $product->is_type('variable');
+	if (!$is_variable) {
+		return null;
+	}
+
+	$variation_ids = array();
+	if (method_exists($product, 'get_visible_children')) {
+		$variation_ids = $product->get_visible_children();
+	} elseif (method_exists($product, 'get_children')) {
+		$variation_ids = $product->get_children();
+	}
+
+	if (!is_array($variation_ids) || empty($variation_ids)) {
+		return null;
+	}
+
+	$min_price = null;
+	$max_price = null;
+	$min_regular_price = null;
+	$max_regular_price = null;
+	$has_discount = false;
+
+	foreach ($variation_ids as $variation_id) {
+		$variation = wc_get_product((int) $variation_id);
+		if (!$variation || !is_a($variation, 'WC_Product_Variation')) {
+			continue;
+		}
+
+		$current_price = al_b2b_normalize_price_number($variation->get_price('edit'));
+		$regular_price = al_b2b_normalize_price_number($variation->get_regular_price('edit'));
+
+		if ($current_price === null && $regular_price === null) {
+			continue;
+		}
+
+		if ($current_price === null) {
+			$current_price = $regular_price;
+		}
+		if ($regular_price === null) {
+			$regular_price = $current_price;
+		}
+
+		if ($use_wholesale_prices) {
+			$wholesale_data = al_b2b_calculate_wholesale_price_data($variation);
+			if (is_array($wholesale_data)) {
+				$wholesale_current = isset($wholesale_data['price'])
+					? al_b2b_normalize_price_number($wholesale_data['price'])
+					: null;
+				$wholesale_regular = isset($wholesale_data['regular'])
+					? al_b2b_normalize_price_number($wholesale_data['regular'])
+					: null;
+
+				if ($wholesale_current !== null) {
+					$current_price = $wholesale_current;
+				}
+				if ($wholesale_regular !== null) {
+					$regular_price = $wholesale_regular;
+				}
+			}
+		}
+
+		if ($current_price === null) {
+			continue;
+		}
+		if ($regular_price === null) {
+			$regular_price = $current_price;
+		}
+
+		$min_price = $min_price === null ? $current_price : min($min_price, $current_price);
+		$max_price = $max_price === null ? $current_price : max($max_price, $current_price);
+		$min_regular_price = $min_regular_price === null ? $regular_price : min($min_regular_price, $regular_price);
+		$max_regular_price = $max_regular_price === null ? $regular_price : max($max_regular_price, $regular_price);
+
+		if ($current_price < $regular_price) {
+			$has_discount = true;
+		}
+	}
+
+	if ($min_price === null || $max_price === null) {
+		return null;
+	}
+
+	if ($min_regular_price === null) {
+		$min_regular_price = $min_price;
+	}
+	if ($max_regular_price === null) {
+		$max_regular_price = $max_price;
+	}
+
+	return array(
+		'minPrice' => $min_price,
+		'maxPrice' => $max_price,
+		'minRegularPrice' => $min_regular_price,
+		'maxRegularPrice' => $max_regular_price,
+		'hasDiscount' => $has_discount || $min_price < $min_regular_price || $max_price < $max_regular_price,
+	);
+}
+
 function al_b2b_get_wholesale_prices($request) {
 	$user = al_b2b_authenticate_request($request);
 	if (is_wp_error($user)) {
@@ -3157,28 +3383,32 @@ function al_b2b_get_wholesale_prices($request) {
 
 		$is_variable_product = method_exists($product, 'is_type') && $product->is_type('variable');
 		if ($is_variable_product) {
-			$min_variation_price = method_exists($product, 'get_variation_price')
-				? al_b2b_normalize_price_number($product->get_variation_price('min', true))
-				: null;
-			$max_variation_price = method_exists($product, 'get_variation_price')
-				? al_b2b_normalize_price_number($product->get_variation_price('max', true))
-				: null;
+			$bounds = al_b2b_get_variable_price_bounds($product, $is_wholesale_viewer);
+			$min_variation_price = $bounds && isset($bounds['minPrice']) ? $bounds['minPrice'] : $current;
+			$max_variation_price = $bounds && isset($bounds['maxPrice']) ? $bounds['maxPrice'] : $min_variation_price;
+			$min_variation_regular_price = $bounds && isset($bounds['minRegularPrice'])
+				? $bounds['minRegularPrice']
+				: ($regular !== null ? $regular : $min_variation_price);
+			$max_variation_regular_price = $bounds && isset($bounds['maxRegularPrice'])
+				? $bounds['maxRegularPrice']
+				: $min_variation_regular_price;
 
-			if ($min_variation_price === null) {
-				$min_variation_price = $current;
-			}
-			if ($max_variation_price === null) {
-				$max_variation_price = $min_variation_price;
-			}
-
-			$min_label = al_b2b_normalize_price_label(wc_price($min_variation_price));
-			$max_label = al_b2b_normalize_price_label(wc_price($max_variation_price));
-
-			$current_label = $min_label !== '' && $max_label !== '' && $min_variation_price < $max_variation_price
-				? "{$min_label} - {$max_label}"
-				: ($min_label !== '' ? $min_label : al_b2b_normalize_price_label(wc_price($current)));
-			$regular_label = al_b2b_normalize_price_label(wc_price($regular));
-			$has_discount = false;
+			$current_label = al_b2b_format_price_range_label(
+				$min_variation_price,
+				$max_variation_price,
+				$current
+			);
+			$regular_label = al_b2b_format_price_range_label(
+				$min_variation_regular_price,
+				$max_variation_regular_price,
+				$regular
+			);
+			$has_discount = $bounds && array_key_exists('hasDiscount', $bounds)
+				? (bool) $bounds['hasDiscount']
+				: (
+					$min_variation_price < $min_variation_regular_price ||
+					$max_variation_price < $max_variation_regular_price
+				);
 		} else {
 			$current_label = al_b2b_normalize_price_label($current_label);
 			$regular_label = al_b2b_normalize_price_label($regular_label);

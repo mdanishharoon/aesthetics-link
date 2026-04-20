@@ -57,7 +57,8 @@ function extractNavFilterOptions(
     }
 
     if (!slug || deduped.has(slug)) continue;
-    deduped.set(slug, link.label);
+    const decodedLabel = decodeEntities(link.label).replace(/\s+/g, " ").trim();
+    deduped.set(slug, decodedLabel || link.label);
   }
 
   return Array.from(deduped.entries()).map(([slug, label]) => ({ slug, label }));
