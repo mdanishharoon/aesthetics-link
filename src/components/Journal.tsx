@@ -93,7 +93,7 @@ export default function Journal() {
         </div>
 
         <div className="d-flex justify-content-center mt-5">
-          <Link href="/journal" className="journal__more">
+          <Link href="/journal" className="journal__more" aria-label="See all journal articles">
             <div className="arrowlong">
               <svg
                 className="icon-arrowlong"
@@ -101,14 +101,15 @@ export default function Journal() {
                 height="19"
                 viewBox="0 0 19 19"
                 fill="none"
+                aria-hidden="true"
               >
                 <path
                   d="M18.7425 0.726739C18.7425 0.467333 18.5322 0.257042 18.2728 0.257042L14.0455 0.257042C13.7861 0.257042 13.5758 0.467333 13.5758 0.72674C13.5758 0.986147 13.7861 1.19644 14.0455 1.19644L17.8031 1.19644L17.8031 4.95401C17.8031 5.21342 18.0134 5.42371 18.2728 5.42371C18.5322 5.42371 18.7425 5.21342 18.7425 4.95401L18.7425 0.726739ZM0.786716 18.877L18.6049 1.05887L17.9406 0.394614L0.122464 18.2128L0.786716 18.877Z"
-                  fill="white"
+                  fill="currentColor"
                 />
               </svg>
             </div>
-            <p>See all</p>
+            <p aria-hidden="true">See all</p>
           </Link>
         </div>
       </div>

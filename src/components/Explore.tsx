@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -244,28 +243,31 @@ function ProductRail({
     snapToIndex(target);
   };
 
-  /* wheel scroll */
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return;
-    const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        const { step, count, maxOffset } = getMetrics();
-        if (step === 0) return;
-        const dir = e.deltaY > 0 ? 1 : -1;
-        const next = Math.max(0, Math.min(count - 1, activeIndex + dir));
-        const offset = Math.min(next * step, maxOffset);
-        setActiveIndex(next);
-        animateTo(offset);
-      }
-    };
-    wrapper.addEventListener("wheel", onWheel, { passive: false });
-    return () => wrapper.removeEventListener("wheel", onWheel);
-  }, [activeIndex, getMetrics, animateTo]);
+
+  const count = products.length;
 
   return (
     <div className={`product__rail${reverse ? " product__rail--reverse" : ""}`}>
+      <div className="product__rail-nav">
+        <button
+          type="button"
+          className="slider-arrow slider-arrow--prev"
+          aria-label="Previous products"
+          disabled={activeIndex === 0}
+          onClick={() => snapToIndex(activeIndex - 1)}
+        >
+          <SliderArrowIcon />
+        </button>
+        <button
+          type="button"
+          className="slider-arrow"
+          aria-label="Next products"
+          disabled={activeIndex >= count - 1}
+          onClick={() => snapToIndex(activeIndex + 1)}
+        >
+          <SliderArrowIcon />
+        </button>
+      </div>
       <div
         ref={wrapperRef}
         className="product__carousel-viewport"
@@ -283,8 +285,8 @@ function ProductRail({
         }}
       >
         <div ref={trackRef} className="product__carousel-track">
-          {products.map((product, index) => (
-            <ProductCard key={product.href} {...product} isActive={index === activeIndex} />
+          {products.map((product) => (
+            <ProductCard key={product.href} {...product} isActive />
           ))}
         </div>
       </div>
@@ -407,9 +409,7 @@ export default function Explore() {
               Best <br />
               <span className="font-serif">Sellers</span>
             </h3>
-            <Link href="/products" className="slider-arrow">
-              <SliderArrowIcon />
-            </Link>
+            <Link href="/products" className="superscript">Shop all</Link>
           </div>
           <div className="half__grid-product">
             <ProductRail products={pureBrillianceProducts} reverse />
@@ -431,9 +431,7 @@ export default function Explore() {
               New <br />
               <span className="font-serif">Arrivals</span>
             </h3>
-            <Link href="/products" className="slider-arrow">
-              <SliderArrowIcon />
-            </Link>
+            <Link href="/products" className="superscript">Shop all</Link>
           </div>
           <div className="half__grid-product">
             <ProductRail products={refinedBlendsProducts} />

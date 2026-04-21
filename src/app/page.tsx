@@ -2,7 +2,7 @@ import Preloader from '@/components/Preloader';
 import MotionProvider from '@/components/MotionProvider';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
-import Ingredients from '@/components/Ingredients';
+import FeaturedProducts from '@/components/FeaturedProducts';
 import Brands from '@/components/Brands';
 import ShopByConcern from '@/components/ShopByConcern';
 import Explore from '@/components/Explore';
@@ -19,7 +19,7 @@ export default function Home() {
       <Header />
       <main id="main">
         <Hero />
-        <Ingredients />
+        <FeaturedProducts />
         <div className="container d-none d-md-block">
           <div className="border" />
         </div>

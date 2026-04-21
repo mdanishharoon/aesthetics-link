@@ -69,7 +69,7 @@ ul {
   --color-product-pure: #f1cccf;
   --color-product-varnaya: #d8d0c4;
   --color-gray2: #737373;
-  --color-gray3: #787878;
+  --color-gray3: #6a6a6a;
   --color-border: #d8d8d8;
   /* Navbar wordmark vertical tweak (transparent bar = margin-top; mobile = top offset) */
   --navbar-logo-nudge-y: 0.22rem;
@@ -638,8 +638,10 @@ section {
   z-index: 100;
   padding: 1.5rem 0;
   transition:
-    background 0.3s,
-    padding 0.3s;
+    background 0.35s ease,
+    backdrop-filter 0.35s ease,
+    box-shadow 0.35s ease,
+    padding 0.35s ease;
 }
 
 #header.scrolled {
@@ -669,7 +671,7 @@ section {
 }
 
 #header.scrolled .border-vertical {
-  background: var(--color-text);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 #header .navbar {
@@ -764,7 +766,7 @@ section {
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  transition: color 0.3s;
+  transition: color 0.35s ease;
 }
 
 .navbar-menu-list-item > a.navbar-link-text {
@@ -783,7 +785,7 @@ section {
 
 .icon-cart path,
 .icon-account path {
-  transition: stroke 0.3s;
+  transition: stroke 0.35s ease;
   stroke: #fff;
 }
 
@@ -2845,9 +2847,11 @@ h5,
   left: 0;
   position: fixed;
   top: 0;
-  transition-duration: 0.8s;
-  transition-property: background-color, box-shadow, transform;
-  transition-timing-function: cubic-bezier(0.18, 0.71, 0.11, 1);
+  transition:
+    background-color 0.35s ease,
+    box-shadow 0.35s ease,
+    padding 0.35s ease,
+    transform 0.35s ease;
   user-select: none;
   width: 100%;
   z-index: 999;
@@ -2871,7 +2875,8 @@ h5,
 }
 
 #header.scrolled .navbar-logo,
-#header.active .navbar-logo {
+#header.active .navbar-logo,
+#header.dark-logo .navbar-logo {
   opacity: 1;
   pointer-events: auto;
 }
@@ -2883,7 +2888,8 @@ h5,
   line-height: 0;
   transition:
     color 0.35s ease,
-    opacity 0.35s ease;
+    opacity 0.35s ease,
+    margin-top 0.35s ease;
 }
 
 .navbar-logo__wordmark .aesthetics-link-logo__svg {
@@ -2891,6 +2897,7 @@ h5,
   flex-shrink: 0;
   height: clamp(0.95rem, 1.65vw, 1.32rem);
   width: auto;
+  transition: height 0.35s ease;
 }
 
 /*
@@ -2960,7 +2967,7 @@ h5,
 
 .navbar-cta {
   padding: 1rem 2rem;
-  transition: background 1s cubic-bezier(0.18, 0.71, 0.11, 1);
+  transition: background 0.35s ease, border-radius 0.35s ease;
 }
 
 @media (min-width: 767.99px) {
@@ -3704,7 +3711,7 @@ h5,
   background: #333;
   transition:
     transform 0.8s cubic-bezier(0.18, 0.71, 0.11, 1),
-    background 1s cubic-bezier(0.18, 0.71, 0.11, 1);
+    background 0.35s ease;
 }
 
 .navbar-hamburger-line:not(:last-child) {
@@ -3745,7 +3752,7 @@ h5,
   stroke: #333;
 }
 
-#header.active .navbar-cta svg path {
+#header.active:not(.scrolled) .navbar-cta svg path {
   stroke: #333 !important;
 }
 
@@ -5703,32 +5710,73 @@ h5,
   stroke: #fff !important;
 }
 
-/* Force dark header on light content pages (About, Cart) */
-.about-page #header:not(.scrolled) .navbar-link-text,
+/* Force dark header on Cart page */
 .cart-page #header:not(.scrolled) .navbar-link-text {
   color: var(--color-text) !important;
 }
 
-.about-page #header:not(.scrolled) .navbar-logo,
-.about-page #header:not(.scrolled) .navbar-logo span,
 .cart-page #header:not(.scrolled) .navbar-logo,
 .cart-page #header:not(.scrolled) .navbar-logo span {
   color: var(--color-text) !important;
 }
 
-.about-page #header:not(.scrolled) .navbar-hamburger-line,
 .cart-page #header:not(.scrolled) .navbar-hamburger-line {
   background: var(--color-text) !important;
 }
 
-.about-page #header:not(.scrolled) .navbar-cta,
 .cart-page #header:not(.scrolled) .navbar-cta {
   background: transparent !important;
 }
 
-.about-page #header:not(.scrolled) .navbar-cta svg path,
 .cart-page #header:not(.scrolled) .navbar-cta svg path {
   stroke: var(--color-text) !important;
+}
+
+/* About page: always show the scrolled navbar state */
+.about-page #header:not(.scrolled) {
+  background-color: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.06);
+}
+
+.about-page #header:not(.scrolled) .navbar-link-text,
+.about-page #header:not(.scrolled) .navbar-menu-list-item-link {
+  color: var(--color-text) !important;
+}
+
+.about-page #header:not(.scrolled) .navbar-hamburger-line {
+  background: var(--color-text) !important;
+}
+
+/* Dark logo variant — used on About page */
+#header.dark-logo:not(.scrolled) .navbar-logo__wordmark {
+  color: var(--color-text) !important;
+}
+
+#header.dark-logo:not(.scrolled) .navbar-logo .aesthetics-link-logo__svg path {
+  fill: var(--color-text) !important;
+}
+
+@media (min-width: 767.99px) {
+  .about-page #header:not(.scrolled) .navbar-cta {
+    background: #333 !important;
+    border-radius: 5rem;
+  }
+
+  /* Beat #header.is--white:not(.scrolled):not(.active) svg path { stroke:#333 !important } (spec 1,4,2)
+     Same specificity here, but this rule is later in the file so it wins. */
+  .about-page #header.is--white:not(.scrolled) .navbar-cta svg path {
+    stroke: #fff !important;
+  }
+
+  .about-page #header:not(.scrolled) .border-vertical {
+    background: rgba(255, 255, 255, 0.5);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .about-page #header:not(.scrolled) .navbar-cta svg path {
+    stroke: var(--color-text) !important;
+  }
 }
 
 /* Desktop 50/50 split */
@@ -6808,35 +6856,6 @@ h5,
   background: var(--color-bg);
 }
 
-/* Force dark header on about page */
-.about-page #header:not(.scrolled) .navbar-link-text {
-  color: var(--color-text);
-}
-
-.about-page #header:not(.scrolled) .navbar-logo,
-.about-page #header:not(.scrolled) .navbar-logo span {
-  color: var(--color-text) !important;
-}
-
-.about-page #header:not(.scrolled) .navbar-hamburger-line {
-  background: var(--color-text);
-}
-
-.about-page #header:not(.scrolled) .navbar-cta {
-  background: transparent !important;
-}
-
-.about-page #header:not(.scrolled) .navbar-cta svg path {
-  stroke: var(--color-text) !important;
-}
-
-.about-page #header.scrolled .navbar-cta {
-  background: #333 !important;
-}
-
-.about-page #header.scrolled .navbar-cta svg path {
-  stroke: #fff !important;
-}
 
 .about-hero {
   padding: 14rem 0 8rem;
@@ -8297,4 +8316,245 @@ h5,
   color: var(--color-gray2);
   display: inline-flex;
   font-size: 0.65rem;
+}
+
+/* ─────────────────────────────────────────────
+   ACCESSIBILITY & FOCUS
+   ───────────────────────────────────────────── */
+
+/* Skip to main content */
+.skip-to-content {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 10000;
+}
+
+.skip-to-content:focus-visible {
+  clip: unset;
+  clip-path: unset;
+  height: auto;
+  overflow: visible;
+  width: auto;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: "PP Mori", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 1.25rem;
+  text-transform: uppercase;
+  outline: 2px solid oklch(35% 0.025 60);
+  outline-offset: 2px;
+}
+
+/* Global focus-visible: warm, on-brand, unobtrusive */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid oklch(35% 0.025 60);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Navbar items get tighter offset so the outline sits snug */
+.navbar-link-text:focus-visible,
+.navbar-menu-list-item-link:focus-visible,
+.navbar-dropdown-link:focus-visible,
+.navbar-accordion-link:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Keyboard-accessible dropdown: open on focus-within */
+@media (min-width: 768px) {
+  .navbar-menu-list-item--has-dropdown:focus-within .navbar-dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   REDUCED MOTION
+   ───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  #header {
+    transition-duration: 0.01ms;
+  }
+
+  .navbar-dropdown {
+    transition: none;
+  }
+
+  .navbar-accordion-panel {
+    transition: none;
+  }
+
+  .navbar-hamburger-line {
+    transition: none;
+  }
+
+  .navbar-chevron {
+    transition: none;
+  }
+
+  .reveal-up,
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .hero-wordmark-reveal,
+  .reveal-up-stagger,
+  .reveal-up-stagger.is-visible {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  #intro .parallax-image {
+    animation: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   FEATURED PRODUCTS SECTION
+   ───────────────────────────────────────────── */
+
+#featured-products {
+  margin: 5rem 0 8rem;
+}
+
+@media (max-width: 767.98px) {
+  #featured-products {
+    margin: 3rem 0 5rem;
+  }
+}
+
+.featured__header {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2.5rem;
+}
+
+.featured__viewall {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  transition: opacity 0.2s ease;
+}
+
+.featured__viewall:hover {
+  opacity: 0.6;
+}
+
+.featured__grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 767.98px) {
+  .featured__grid {
+    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Let grid control width — override global min-width on product cards */
+#featured-products .product__card {
+  cursor: pointer;
+  min-width: 0;
+}
+
+/* ─────────────────────────────────────────────
+   EXPLORE — MULTI-CARD CAROUSEL
+   ───────────────────────────────────────────── */
+
+/* Show ~2 cards + peek of 3rd */
+#explore .product__carousel-track .product__card {
+  flex: 0 0 calc(48% - 0.75rem);
+  min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+  #explore .product__carousel-track .product__card {
+    flex: 0 0 calc(80vw - 1.5rem);
+  }
+}
+
+/* Prev / next nav buttons inside ProductRail */
+.product__rail-nav {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-bottom: 1.25rem;
+}
+
+.product__rail-nav .slider-arrow--prev {
+  transform: rotate(180deg);
+}
+
+.product__rail-nav .slider-arrow--prev:hover {
+  transform: rotate(180deg) scale(1.1);
+}
+
+.product__rail-nav .slider-arrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+  transform: none;
+}
+
+.product__rail-nav .slider-arrow--prev:disabled {
+  transform: rotate(180deg);
+}
+
+/* ─────────────────────────────────────────────
+   DELIGHT — ENTRANCE ANIMATIONS
+   ───────────────────────────────────────────── */
+
+/* Hero: cinematic slow zoom on video background */
+@keyframes heroVideoZoom {
+  from { transform: scale(1.04); }
+  to   { transform: scale(1); }
+}
+
+#intro .parallax-image {
+  animation: heroVideoZoom 5s cubic-bezier(0.0, 0.0, 0.2, 1) both;
+}
+
+/* Hero: wordmark gentle fade-in, slightly delayed */
+.hero-wordmark-reveal {
+  animation: heroReveal 1.2s cubic-bezier(0.18, 0.71, 0.11, 1) 0.55s both;
+}
+
+/* Staggered section-item reveals (animation-based so hover transitions are unaffected) */
+@keyframes revealUpAnim {
+  from {
+    opacity: 0;
+    transform: translateY(1.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal-up-stagger {
+  opacity: 0;
+  transform: translateY(1.75rem);
+}
+
+.reveal-up-stagger.is-visible {
+  animation: revealUpAnim 0.85s cubic-bezier(0.18, 0.71, 0.11, 1) both;
+  animation-delay: var(--stagger, 0s);
 }

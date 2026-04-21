@@ -61,7 +61,7 @@ export default function Preloader() {
             </div>
           </div>
           <div className="line" />
-          <div className="logo" aria-hidden>
+          <div className="logo" aria-hidden="true">
             <AestheticsLinkWordmark className="preloader__word" />
           </div>
           <div className="loading">

@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -44,9 +45,9 @@ const BRANDS = [
 
 export default function Brands() {
   return (
-    <section id="brands" className="reveal-up" data-reveal>
+    <section id="brands">
       <div className="container">
-        <div className="brands__header">
+        <div className="brands__header reveal-up" data-reveal>
           <h2 className="brands__title">
             Brands <span className="font-serif">We Carry</span>
           </h2>
@@ -72,15 +73,15 @@ export default function Brands() {
             <Link
               key={brand.href}
               href={brand.href}
-              className="brands__tile"
-              style={{ transitionDelay: `${i * 0.06}s` }}
+              className="brands__tile reveal-up-stagger"
+              data-reveal
+              style={{ "--stagger": `${i * 0.07}s` } as React.CSSProperties}
             >
               <div className="brands__tile-img">
                 <Image src={brand.image} alt={brand.name} fill sizes="(max-width: 768px) 50vw, 16vw" style={{ objectFit: "cover" }} />
               </div>
               <div className="brands__tile-overlay" />
               <div className="brands__tile-content">
-                <p className="brands__tile-category superscript">{brand.category}</p>
                 <h3 className="brands__tile-name">{brand.name}</h3>
               </div>
             </Link>

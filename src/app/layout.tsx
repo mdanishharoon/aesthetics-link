@@ -22,6 +22,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
+        <a href="#main" className="skip-to-content">Skip to main content</a>
         <StorefrontNavigationProvider navigation={navigation}>
           <QueryProvider>
             <AuthProvider>

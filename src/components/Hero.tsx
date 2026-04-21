@@ -72,7 +72,7 @@ export default function Hero() {
 
   return (
     <section id="intro">
-      <Link href="/" className="intro__wordmark" aria-label="AestheticsLink home">
+      <Link href="/" className="intro__wordmark hero-wordmark-reveal" aria-label="AestheticsLink home">
         <AestheticsLinkWordmark />
       </Link>
       <div className="intro__text">

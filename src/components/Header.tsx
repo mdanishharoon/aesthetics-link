@@ -10,7 +10,7 @@ import { DEFAULT_NAVIGATION } from "@/lib/storefront/constants";
 import { fetchCart, getCachedCartSnapshot } from "@/lib/storefront/client";
 import type { StorefrontCart } from "@/lib/storefront/types";
 
-export default function Header() {
+export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -73,19 +73,21 @@ export default function Header() {
       id="header"
       className={[
         "is--white",
+        darkLogo ? "dark-logo" : "",
         scrolled ? "scrolled" : "",
         scrolled || menuOpen ? "active" : "",
         hidden ? "is--hidden" : "",
       ].filter(Boolean).join(" ")}
     >
       <div className="container">
-        <nav className={`navbar${menuOpen ? " active" : ""}`}>
+        <nav className={`navbar${menuOpen ? " active" : ""}`} aria-label="Main navigation">
           <button
             type="button"
             className={`navbar-hamburger${menuOpen ? " active" : ""}`}
             onClick={() => setMenuOpen((o) => !o)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
+            aria-controls="navbar-mobile-menu"
           >
             <div className="navbar-hamburger-line navbar-hamburger-line-1" />
             <div className="navbar-hamburger-line navbar-hamburger-line-2" />
@@ -95,7 +97,7 @@ export default function Header() {
             <AestheticsLinkWordmark className="navbar-logo__wordmark" />
           </Link>
 
-          <div className={`navbar-menu${menuOpen ? " open" : ""}`}>
+          <div id="navbar-mobile-menu" className={`navbar-menu${menuOpen ? " open" : ""}`}>
             <ul className="navbar-menu-list">
 
               {/* Shop with dropdown */}
@@ -109,6 +111,7 @@ export default function Header() {
                   className="navbar-link-text navbar-dropdown-trigger d-none d-md-flex"
                   aria-expanded={activeDropdown === "shop"}
                   aria-haspopup="true"
+                  onClick={() => activeDropdown === "shop" ? setActiveDropdown(null) : openDropdown("shop")}
                 >
                   Shop
                   <svg className="navbar-chevron" width="8" height="5" viewBox="0 0 8 5" fill="none" aria-hidden="true">
@@ -181,6 +184,7 @@ export default function Header() {
                   className="navbar-link-text navbar-dropdown-trigger d-none d-md-flex"
                   aria-expanded={activeDropdown === "brands"}
                   aria-haspopup="true"
+                  onClick={() => activeDropdown === "brands" ? setActiveDropdown(null) : openDropdown("brands")}
                 >
                   Brands
                   <svg className="navbar-chevron" width="8" height="5" viewBox="0 0 8 5" fill="none" aria-hidden="true">
@@ -243,11 +247,11 @@ export default function Header() {
               </li>
               <li className="navbar-menu-list-item navbar-menu-list-item--mobile-account">
                 <Link
-                  href="/profile"
+                  href={user ? "/profile" : "/login"}
                   className="navbar-link-text link"
                   onClick={closeAll}
                 >
-                  Account
+                  {user ? "Account" : "Sign in"}
                 </Link>
               </li>
             </ul>
@@ -321,10 +325,10 @@ export default function Header() {
                   ) : null}
                 </Link>
               </li>
-              <div className="border-vertical d-none d-md-block" />
+              <li role="separator" aria-hidden="true" className="border-vertical d-none d-md-block" />
               <li className="navbar-menu-list-item navbar-cta-account">
                 <Link
-                  href="/profile"
+                  href={user ? "/profile" : "/login"}
                   className="navbar-menu-list-item-link"
                   aria-label={user ? "My account" : "Sign in"}
                   style={{ position: "relative" }}

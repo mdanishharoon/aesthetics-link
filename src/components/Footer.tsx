@@ -57,8 +57,8 @@ export default function Footer() {
               <div className="col-md-4 col-12 mt-5 mt-md-0">
                 <p className="subtitle text-gray2">Contact Us</p>
                 <ul>
-                  <li><span>hello@aestheticslink.com</span></li>
-                  <li><span>1111-2222-3333</span></li>
+                  <li><a href="mailto:hello@aestheticslink.com" className="link">hello@aestheticslink.com</a></li>
+                  <li><a href="tel:+111122223333" className="link">1111-2222-3333</a></li>
                 </ul>
               </div>
             </div>
@@ -74,21 +74,24 @@ export default function Footer() {
               <p className="maxwidth-0 text-gray2">
                 Stay linked to the latest in aesthetic science and new launches.
               </p>
-              <input
-                type="email"
-                name="contact[email]"
-                autoCorrect="off"
-                autoCapitalize="off"
-                autoComplete="email"
-                placeholder="Enter your email"
-                required
-              />
-              <button className="footer__submit flex-center flex-column" type="submit">
-                <div className="arrowlong">
-                  <ArrowLongIcon />
-                </div>
-                <span className="text-underline mt-3 text-uppercase text-gray2">Subscribe</span>
-              </button>
+              <form onSubmit={(e) => e.preventDefault()}>
+                <input
+                  type="email"
+                  name="contact[email]"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  autoComplete="email"
+                  placeholder="Enter your email"
+                  aria-label="Your email address"
+                  required
+                />
+                <button className="footer__submit flex-center flex-column" type="submit">
+                  <div className="arrowlong">
+                    <ArrowLongIcon />
+                  </div>
+                  <span className="text-underline mt-3 text-uppercase text-gray2">Subscribe</span>
+                </button>
+              </form>
               <div className="border" />
               <p className="text-gray3 font-small maxwidth-0">
                 No spam, only quality articles to help you look more radiant. You can opt out anytime.

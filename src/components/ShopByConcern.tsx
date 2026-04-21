@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -38,19 +39,21 @@ const CONCERNS = [
 
 export default function ShopByConcern() {
   return (
-    <section id="concerns" className="reveal-up" data-reveal>
+    <section id="concerns">
       <div className="container">
-        <div className="concerns__header">
+        <div className="concerns__header reveal-up" data-reveal>
           <h2 className="concerns__title">
             Shop by <span className="font-serif">Concern</span>
           </h2>
         </div>
         <div className="concerns__grid">
-          {CONCERNS.map((concern) => (
+          {CONCERNS.map((concern, i) => (
             <Link
               key={concern.href}
               href={concern.href}
-              className="concerns__tile"
+              className="concerns__tile reveal-up-stagger"
+              data-reveal
+              style={{ "--stagger": `${i * 0.06}s` } as React.CSSProperties}
             >
               <div className="concerns__tile-icon">
                 <Image src={concern.icon} alt="" aria-hidden="true" width={32} height={32} unoptimized style={{ width: "100%", height: "100%", objectFit: "contain" }} />

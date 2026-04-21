@@ -9,7 +9,7 @@ export default function About() {
     return (
         <div className="about-page">
             <MotionProvider />
-            <Header />
+            <Header darkLogo />
 
             <main>
                 {/* ── HERO ────────────────────────────────────────────────── */}
