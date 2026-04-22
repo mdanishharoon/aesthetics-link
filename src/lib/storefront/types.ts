@@ -1,4 +1,62 @@
-import type { Product } from "@/data/products";
+export type ProductBenefit = {
+  icon: string;
+  title: string;
+  desc: string;
+};
+
+export type KeyIngredient = {
+  name: string;
+  desc: string;
+};
+
+export type ProductReview = {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  title: string;
+  body: string;
+  verified: boolean;
+};
+
+export type ReviewSummary = {
+  average: number;
+  count: number;
+  distribution: [number, number, number, number, number];
+};
+
+export type StorefrontBaseProduct = {
+  wooId?: number;
+  slug: string;
+  name: string;
+  shortName: string;
+  category: string;
+  tagline: string;
+  description: string;
+  price: string;
+  retailPrice?: string;
+  regularPrice?: string | null;
+  priceSource?: "retail" | "wholesale";
+  hasDiscount?: boolean;
+  claim: {
+    headline: string;
+    headlineSerif: string;
+    sub: string;
+  };
+  benefits: ProductBenefit[];
+  keyIngredients: KeyIngredient[];
+  howToUse: string[];
+  images: {
+    hero: string;
+    heroAlt: string;
+    detail: string;
+    detailAlt: string;
+    texture: string;
+  };
+  accentBg: string;
+  reviewSummary?: ReviewSummary;
+  reviews?: ProductReview[];
+};
 
 export type StorefrontCatalogProduct = {
   id: number;
@@ -153,7 +211,7 @@ export type StorefrontOrderLookupResult = {
   };
 };
 
-export type StorefrontDetailProduct = Product & {
+export type StorefrontDetailProduct = StorefrontBaseProduct & {
   regularPrice?: string | null;
   priceSource?: "retail" | "wholesale";
   hasDiscount?: boolean;

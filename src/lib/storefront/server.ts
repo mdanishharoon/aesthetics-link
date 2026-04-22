@@ -8,7 +8,7 @@ import type {
   GQLProductsResponse,
   GQLVariableProduct,
 } from "@/lib/graphql/types";
-import { getProductBySlug, products as fallbackProducts, type Product } from "@/data/products";
+import { getProductBySlug } from "@/data/products";
 import { getWooStoreBaseUrl } from "@/lib/storefront/config";
 import { decodeEntities } from "@/lib/utils/text";
 import {
@@ -18,6 +18,7 @@ import {
   DEFAULT_NAV_BRANDS,
 } from "@/lib/storefront/constants";
 import type {
+  StorefrontBaseProduct,
   StorefrontCatalogProduct,
   StorefrontDetailProduct,
   StorefrontNavLink,
@@ -193,7 +194,7 @@ function makeDefaultProduct(
   description: string,
   price: string,
   images: { hero: string; heroAlt: string; detail: string; detailAlt: string; texture: string },
-): Product {
+): StorefrontBaseProduct {
   return {
     wooId: id,
     slug,
@@ -248,7 +249,7 @@ function makeDefaultProduct(
 }
 
 function mapGQLToCatalogProduct(product: GQLProduct, index: number): StorefrontCatalogProduct {
-  const fallback = getProductBySlug(product.slug);
+  const enrichment = getProductBySlug(product.slug);
   const firstCategory = product.productCategories.nodes[0] ?? null;
   const brands = product.productBrands?.nodes ?? [];
   const primaryBrand = brands[0] ?? null;
@@ -262,7 +263,7 @@ function mapGQLToCatalogProduct(product: GQLProduct, index: number): StorefrontC
     stockStatus?: string;
   };
 
-  const price = stripGqlPrice(raw.price) ?? fallback?.price ?? "";
+  const price = stripGqlPrice(raw.price) ?? "";
   const regularPrice = stripGqlPrice(raw.regularPrice) ?? null;
   const salePrice = stripGqlPrice(raw.salePrice) ?? null;
   const stockStatus = normalizeGqlStockStatus(raw.stockStatus);
@@ -272,21 +273,21 @@ function mapGQLToCatalogProduct(product: GQLProduct, index: number): StorefrontC
 
   const description =
     stripHtml(product.shortDescription ?? product.description ?? "") ||
-    fallback?.description ||
+    enrichment?.description ||
     "High-performance skincare, formulated without compromise.";
 
   return {
     id: product.databaseId,
     slug: product.slug,
     name: product.name,
-    shortName: fallback?.shortName ?? toShortName(product.name),
-    category: firstCategory?.name ?? fallback?.category ?? "Skincare",
+    shortName: toShortName(product.name),
+    category: firstCategory?.name ?? "Skincare",
     categorySlug: firstCategory?.slug ?? slugify(firstCategory?.name ?? "skincare"),
     categorySlugs: categorySlugs.length > 0 ? categorySlugs : [slugify(firstCategory?.name ?? "skincare")],
     brand: primaryBrand?.name ?? null,
     brandSlug: primaryBrand?.slug ? slugify(primaryBrand.slug) : null,
     brandSlugs: brands.map((b) => slugify(b.slug)).filter(Boolean),
-    tagline: fallback?.tagline ?? toSentence(description),
+    tagline: enrichment?.tagline ?? toSentence(description),
     description,
     price,
     retailPrice: price,
@@ -298,14 +299,14 @@ function mapGQLToCatalogProduct(product: GQLProduct, index: number): StorefrontC
     inStock,
     stockStatus,
     stockMessage: inStock ? null : "Out of stock",
-    image: product.image?.sourceUrl ?? fallback?.images.hero ?? "/images/offer.jpg",
-    imageAlt: product.image?.altText ?? fallback?.images.heroAlt ?? product.name,
-    accentBg: fallback?.accentBg ?? ACCENT_COLORS[index % ACCENT_COLORS.length],
+    image: product.image?.sourceUrl ?? "/images/offer.jpg",
+    imageAlt: product.image?.altText ?? product.name,
+    accentBg: enrichment?.accentBg ?? ACCENT_COLORS[index % ACCENT_COLORS.length],
   };
 }
 
 function mapGQLToDetailProduct(product: GQLProduct): StorefrontDetailProduct {
-  const fallback = getProductBySlug(product.slug);
+  const enrichment = getProductBySlug(product.slug);
   const raw = product as GQLProduct & {
     price?: string | null;
     regularPrice?: string | null;
@@ -313,7 +314,7 @@ function mapGQLToDetailProduct(product: GQLProduct): StorefrontDetailProduct {
     stockStatus?: string;
   };
 
-  const price = stripGqlPrice(raw.price) ?? fallback?.price ?? "";
+  const price = stripGqlPrice(raw.price) ?? "";
   const regularPrice = stripGqlPrice(raw.regularPrice) ?? null;
   const salePrice = stripGqlPrice(raw.salePrice) ?? null;
   const stockStatus = normalizeGqlStockStatus(raw.stockStatus);
@@ -324,33 +325,36 @@ function mapGQLToDetailProduct(product: GQLProduct): StorefrontDetailProduct {
 
   const description =
     stripHtml(product.description ?? product.shortDescription ?? "") ||
-    fallback?.description ||
+    enrichment?.description ||
     "Clinically engineered skincare designed for visible results.";
 
   const galleryNodes = product.galleryImages.nodes;
-  const heroSrc = product.image?.sourceUrl ?? galleryNodes[0]?.sourceUrl ?? fallback?.images.hero ?? "/images/offer.jpg";
-  const detailSrc = galleryNodes[0]?.sourceUrl ?? heroSrc ?? fallback?.images.detail ?? heroSrc;
-  const textureSrc = galleryNodes[1]?.sourceUrl ?? detailSrc ?? fallback?.images.texture ?? heroSrc;
+  const heroSrc = product.image?.sourceUrl ?? galleryNodes[0]?.sourceUrl ?? "/images/offer.jpg";
+  const detailSrc = galleryNodes[0]?.sourceUrl ?? heroSrc;
+  const textureSrc = galleryNodes[1]?.sourceUrl ?? detailSrc;
 
   const images = {
     hero: heroSrc,
-    heroAlt: product.image?.altText ?? fallback?.images.heroAlt ?? product.name,
-    detail: detailSrc,
-    detailAlt: galleryNodes[0]?.altText ?? fallback?.images.detailAlt ?? product.name,
+    heroAlt: product.image?.altText ?? product.name,
+    detail: detailSrc ?? heroSrc,
+    detailAlt: galleryNodes[0]?.altText ?? product.name,
     texture: textureSrc,
   };
 
-  const base: Product =
-    fallback ??
-    makeDefaultProduct(
-      product.databaseId,
-      product.slug,
-      product.name,
-      product.productCategories.nodes[0]?.name ?? "Skincare",
-      description,
-      price,
-      images,
-    );
+  const base: StorefrontBaseProduct = enrichment
+    ? {
+        ...enrichment,
+        wooId: product.databaseId,
+      }
+    : makeDefaultProduct(
+        product.databaseId,
+        product.slug,
+        product.name,
+        product.productCategories.nodes[0]?.name ?? "Skincare",
+        description,
+        price,
+        images,
+      );
 
   const variableConfig =
     isVariable ? mapGQLToVariableConfig(product as GQLVariableProduct) : null;
@@ -375,35 +379,6 @@ function mapGQLToDetailProduct(product: GQLProduct): StorefrontDetailProduct {
     stockMessage: inStock ? null : "Out of stock",
     images,
   };
-}
-
-// ── Static fallback ────────────────────────────────────────────────────────
-
-function toCatalogFallback(): StorefrontCatalogProduct[] {
-  return fallbackProducts.map((product) => ({
-    id: product.wooId ?? 0,
-    slug: product.slug,
-    name: product.name,
-    shortName: product.shortName,
-    category: product.category,
-    categorySlug: slugify(product.category),
-    categorySlugs: [slugify(product.category)],
-    brand: null,
-    brandSlug: null,
-    brandSlugs: [],
-    tagline: product.tagline,
-    description: product.description,
-    price: product.price,
-    retailPrice: product.price,
-    productType: "simple",
-    hasOptions: false,
-    inStock: true,
-    stockStatus: "instock",
-    stockMessage: null,
-    image: product.images.hero,
-    imageAlt: product.images.heroAlt,
-    accentBg: product.accentBg,
-  }));
 }
 
 // ── Navigation (Store API) ─────────────────────────────────────────────────
@@ -910,7 +885,7 @@ export async function getCatalogProducts(options?: {
     const nodes = response.data?.products?.nodes ?? [];
 
     if (nodes.length === 0) {
-      return toCatalogFallback();
+      return [];
     }
 
     const mapped = nodes.map(mapGQLToCatalogProduct);
@@ -941,7 +916,7 @@ export async function getCatalogProducts(options?: {
     return catalog;
   } catch (err) {
     console.error("[GraphQL] getCatalogProducts failed:", err);
-    return toCatalogFallback();
+    return [];
   }
 }
 
@@ -960,12 +935,12 @@ export async function getDetailProductBySlug(slug: string): Promise<StorefrontDe
     const product = response.data?.product ?? null;
 
     if (!product) {
-      return getProductBySlug(slug) ?? null;
+      return null;
     }
 
     return mapGQLToDetailProduct(product);
   } catch (err) {
     console.error(`[GraphQL] getDetailProductBySlug(${slug}) failed:`, err);
-    return getProductBySlug(slug) ?? null;
+    return null;
   }
 }
