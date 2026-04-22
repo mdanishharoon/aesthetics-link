@@ -167,6 +167,8 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
     email: "",
   });
   const [reviewFeedback, setReviewFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const reviewSubmitInFlightRef = useRef<Promise<void> | null>(null);
   const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
   const [reviewsModalTab, setReviewsModalTab] = useState<"read" | "write">("read");
 
@@ -189,36 +191,6 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
     queryKey: ["storefront", "product-reviews", product.wooId ?? 0],
     queryFn: () => fetchProductReviews(product.wooId ?? 0),
     enabled: Number.isInteger(product.wooId) && (product.wooId ?? 0) > 0,
-  });
-
-  const submitReviewMutation = useMutation({
-    mutationFn: () =>
-      submitProductReview({
-        productId: product.wooId ?? 0,
-        rating: reviewForm.rating,
-        title: reviewForm.title,
-        body: reviewForm.body,
-        author: user ? undefined : reviewForm.author,
-        email: user ? undefined : reviewForm.email,
-      }),
-    onSuccess: (response) => {
-      setReviewFeedback({
-        tone: "success",
-        message: response.message ?? "Review submitted successfully.",
-      });
-      setReviewForm((prev) => ({
-        ...prev,
-        title: "",
-        body: "",
-      }));
-      void reviewsQuery.refetch();
-    },
-    onError: (error) => {
-      setReviewFeedback({
-        tone: "error",
-        message: error instanceof Error ? error.message : "Unable to submit review.",
-      });
-    },
   });
 
   const removeCartMutation = useMutation({
@@ -500,9 +472,16 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
     await updateCartMutation.mutateAsync({ key, quantity: nextQty });
   };
 
-  const handleSubmitReview = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmitReview = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     setReviewFeedback(null);
+    if (reviewSubmitInFlightRef.current) {
+      setReviewFeedback({
+        tone: "error",
+        message: "Your previous review is still processing. Please wait a moment.",
+      });
+      return;
+    }
     if (!product.wooId || product.wooId <= 0) {
       setReviewFeedback({
         tone: "error",
@@ -510,7 +489,43 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
       });
       return;
     }
-    await submitReviewMutation.mutateAsync();
+
+    setReviewSubmitting(true);
+    const unlockTimer = window.setTimeout(() => setReviewSubmitting(false), 1200);
+
+    const request = submitProductReview({
+      productId: product.wooId ?? 0,
+      rating: reviewForm.rating,
+      title: reviewForm.title,
+      body: reviewForm.body,
+      author: user ? undefined : reviewForm.author,
+      email: user ? undefined : reviewForm.email,
+    })
+      .then((response) => {
+        setReviewFeedback({
+          tone: "success",
+          message: response.message ?? "Review submitted successfully.",
+        });
+        setReviewForm((prev) => ({
+          ...prev,
+          title: "",
+          body: "",
+        }));
+        void reviewsQuery.refetch();
+      })
+      .catch((error) => {
+        setReviewFeedback({
+          tone: "error",
+          message: error instanceof Error ? error.message : "Unable to submit review.",
+        });
+      })
+      .finally(() => {
+        window.clearTimeout(unlockTimer);
+        reviewSubmitInFlightRef.current = null;
+        setReviewSubmitting(false);
+      });
+
+    reviewSubmitInFlightRef.current = request;
   };
 
   return (
@@ -1071,9 +1086,9 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
                       <button
                         type="submit"
                         className="btn review-form__submit"
-                        disabled={submitReviewMutation.isPending || !product.wooId}
+                        disabled={reviewSubmitting || !product.wooId}
                       >
-                        {submitReviewMutation.isPending ? "Submitting..." : "Submit Review"}
+                        {reviewSubmitting ? "Submitting..." : "Submit Review"}
                       </button>
                       {reviewsQuery.isFetching ? (
                         <span className="review-form__status">Refreshing reviews…</span>
