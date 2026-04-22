@@ -491,7 +491,8 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
     }
 
     setReviewSubmitting(true);
-    const unlockTimer = window.setTimeout(() => setReviewSubmitting(false), 1200);
+    setReviewsModalTab("read");
+    setReviewsModalOpen(false);
 
     const request = submitProductReview({
       productId: product.wooId ?? 0,
@@ -508,8 +509,6 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
           title: "",
           body: "",
         }));
-        setReviewsModalTab("read");
-        setReviewsModalOpen(false);
         void reviewsQuery.refetch();
       })
       .catch((error) => {
@@ -519,7 +518,6 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
         });
       })
       .finally(() => {
-        window.clearTimeout(unlockTimer);
         reviewSubmitInFlightRef.current = null;
         setReviewSubmitting(false);
       });
@@ -625,6 +623,15 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
             >
               <p>Write a Review</p>
             </button>
+            {reviewFeedback ? (
+              <p
+                className={`product-intro__status product-intro__status--${reviewFeedback.tone}`}
+                role="status"
+                aria-live="polite"
+              >
+                {reviewFeedback.message}
+              </p>
+            ) : null}
             {isOutOfStock ? (
               <p className="product-intro__stock-note" role="status" aria-live="polite">
                 {stockMessage}
