@@ -240,16 +240,7 @@ export default function Header({ darkLogo = false, forceScrolled = false }: { da
                 </div>
               </li>
 
-              {/* About Us */}
-              <li className="navbar-menu-list-item">
-                <Link
-                  href="/about"
-                  className="navbar-link-text link"
-                  onClick={closeAll}
-                >
-                  About Us
-                </Link>
-              </li>
+
               <li className="navbar-menu-list-item navbar-menu-list-item--mobile-account">
                 <Link
                   href={user ? "/profile" : "/login"}
