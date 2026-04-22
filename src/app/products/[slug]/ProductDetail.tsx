@@ -167,6 +167,13 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
     email: "",
   });
   const [reviewFeedback, setReviewFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
+  const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
+  const [reviewsModalTab, setReviewsModalTab] = useState<"read" | "write">("read");
+
+  function openReviewsModal(tab: "read" | "write") {
+    setReviewsModalTab(tab);
+    setReviewsModalOpen(true);
+  }
   const variationConfig = product.variableConfig ?? null;
   const [variationSelection, setVariationSelection] = useState<Record<string, string>>(
     product.variableConfig?.defaults ?? {},
@@ -545,11 +552,11 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
             </h1>
             <p className="product-intro__tagline">{product.tagline}</p>
             {reviewSummary ? (
-              <a href="#product-reviews" className="product-rating-badge">
+              <button type="button" className="product-rating-badge" onClick={() => openReviewsModal("read")}>
                 <Stars rating={reviewSummary.average} />
                 <span className="product-rating-badge__score">{reviewSummary.average.toFixed(1)}</span>
                 <span className="product-rating-badge__count">({reviewSummary.count} reviews)</span>
-              </a>
+              </button>
             ) : null}
             <p className="product-intro__price" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
               {effectiveRegularPrice && effectiveRegularPrice !== effectivePrice ? (
@@ -602,13 +609,14 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
                     ? "Adding..."
                     : "Add to Bag"}
             </button>
-            <a
-              href="#product-reviews"
-              className="product-back__link"
-              style={{ marginTop: "0.6rem", display: "inline-flex" }}
+            <button
+              type="button"
+              className="product-back__link product-back__link--btn"
+              style={{ marginTop: "0.6rem" }}
+              onClick={() => openReviewsModal("write")}
             >
               <p>Write a Review</p>
-            </a>
+            </button>
             {isOutOfStock ? (
               <p className="product-intro__stock-note" role="status" aria-live="polite">
                 {stockMessage}
@@ -788,145 +796,73 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
         {/* ── 6. REVIEWS ───────────────────────────────────────────── */}
         <section id="product-reviews" className="reveal-up" data-reveal>
           <div className="container">
-              <div className="reviews__head">
-                <h2 className="reviews__title">Customer <span className="font-serif">Reviews</span></h2>
-              </div>
-              <div className="reviews__body">
-                {reviewSummary ? (
-                  <div className="reviews__summary">
-                    <p className="reviews__avg">{reviewSummary.average.toFixed(1)}</p>
-                    <Stars rating={reviewSummary.average} size="lg" />
-                    <p className="reviews__total">Based on {reviewSummary.count} reviews</p>
-                    <div className="reviews__bars">
-                      {reviewSummary.distribution.map((count, i) => {
-                        const star = 5 - i;
-                        const pct = reviewSummary.count > 0 ? Math.round((count / reviewSummary.count) * 100) : 0;
-                        return (
-                          <div key={star} className="reviews__bar-row">
-                            <span className="reviews__bar-label">{star}</span>
-                            <div className="reviews__bar-track">
-                              <div className="reviews__bar-fill" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="reviews__bar-pct">{pct}%</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+            <div className="reviews__head">
+              <h2 className="reviews__title">Customer <span className="font-serif">Reviews</span></h2>
+              <div className="reviews__head-actions">
+                {reviewSummary && reviewSummary.count > 0 ? (
+                  <button type="button" className="reviews__cta-secondary" onClick={() => openReviewsModal("read")}>
+                    View all {reviewSummary.count} reviews
+                  </button>
                 ) : null}
-                <div className="reviews__list">
-                  {reviewItems.length > 0 ? (
-                    reviewItems.map((review) => (
-                      <div key={review.id} className="review-card">
-                        <div className="review-card__top">
-                          <Stars rating={review.rating} />
-                          {review.verified ? (
-                            <span className="review-card__verified">Verified Purchase</span>
-                          ) : null}
-                        </div>
-                        <h3 className="review-card__title">{review.title}</h3>
-                        <p className="review-card__body">{review.body}</p>
-                        <div className="review-card__meta">
-                          <span className="review-card__author">{review.author}</span>
-                          <span className="review-card__date">{review.date}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p style={{ color: "var(--color-gray2)" }}>
-                      No reviews yet. Be the first to share your experience.
-                    </p>
-                  )}
-                </div>
+                <button type="button" className="btn reviews__cta-primary" onClick={() => openReviewsModal("write")}>
+                  Write a Review
+                </button>
               </div>
-              <form
-                onSubmit={handleSubmitReview}
-                style={{
-                  marginTop: "1.5rem",
-                  padding: "1rem",
-                  border: "1px solid rgba(0,0,0,0.12)",
-                  borderRadius: "14px",
-                  background: "rgba(255,255,255,0.68)",
-                }}
-              >
-                <h3 style={{ marginBottom: "0.85rem" }}>Write a Review</h3>
-                <div style={{ display: "grid", gap: "0.75rem" }}>
-                  <label style={{ display: "grid", gap: "0.35rem" }}>
-                    <span>Rating</span>
-                    <select
-                      value={reviewForm.rating}
-                      onChange={(event) => setReviewForm((prev) => ({ ...prev, rating: Number(event.target.value) }))}
-                      required
-                    >
-                      <option value={5}>5 - Excellent</option>
-                      <option value={4}>4 - Good</option>
-                      <option value={3}>3 - Average</option>
-                      <option value={2}>2 - Fair</option>
-                      <option value={1}>1 - Poor</option>
-                    </select>
-                  </label>
-                  <label style={{ display: "grid", gap: "0.35rem" }}>
-                    <span>Title</span>
-                    <input
-                      type="text"
-                      value={reviewForm.title}
-                      onChange={(event) => setReviewForm((prev) => ({ ...prev, title: event.target.value }))}
-                      placeholder="Summarize your experience"
-                      required
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: "0.35rem" }}>
-                    <span>Review</span>
-                    <textarea
-                      value={reviewForm.body}
-                      onChange={(event) => setReviewForm((prev) => ({ ...prev, body: event.target.value }))}
-                      placeholder="Share what you liked, what improved, and who this is for."
-                      rows={5}
-                      required
-                    />
-                  </label>
-                  {!user ? (
-                    <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                      <label style={{ display: "grid", gap: "0.35rem" }}>
-                        <span>Name</span>
-                        <input
-                          type="text"
-                          value={reviewForm.author}
-                          onChange={(event) => setReviewForm((prev) => ({ ...prev, author: event.target.value }))}
-                          placeholder="Your name"
-                          required
-                        />
-                      </label>
-                      <label style={{ display: "grid", gap: "0.35rem" }}>
-                        <span>Email</span>
-                        <input
-                          type="email"
-                          value={reviewForm.email}
-                          onChange={(event) => setReviewForm((prev) => ({ ...prev, email: event.target.value }))}
-                          placeholder="you@example.com"
-                          required
-                        />
-                      </label>
+            </div>
+
+            {reviewSummary ? (
+              <div className="reviews__body">
+                <div className="reviews__summary">
+                  <p className="reviews__avg">{reviewSummary.average.toFixed(1)}</p>
+                  <Stars rating={reviewSummary.average} size="lg" />
+                  <p className="reviews__total">Based on {reviewSummary.count} reviews</p>
+                  <div className="reviews__bars">
+                    {reviewSummary.distribution.map((count, i) => {
+                      const star = 5 - i;
+                      const pct = reviewSummary.count > 0 ? Math.round((count / reviewSummary.count) * 100) : 0;
+                      return (
+                        <div key={star} className="reviews__bar-row">
+                          <span className="reviews__bar-label">{star}</span>
+                          <div className="reviews__bar-track">
+                            <div className="reviews__bar-fill" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="reviews__bar-pct">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="reviews__list">
+                  {reviewItems.slice(0, 3).map((review) => (
+                    <div key={review.id} className="review-card">
+                      <div className="review-card__top">
+                        <Stars rating={review.rating} />
+                        {review.verified ? <span className="review-card__verified">Verified Purchase</span> : null}
+                      </div>
+                      <h3 className="review-card__title">{review.title}</h3>
+                      <p className="review-card__body">{review.body}</p>
+                      <div className="review-card__meta">
+                        <span className="review-card__author">{review.author}</span>
+                        <span className="review-card__date">{review.date}</span>
+                      </div>
                     </div>
+                  ))}
+                  {reviewItems.length > 3 ? (
+                    <button type="button" className="reviews__see-more" onClick={() => openReviewsModal("read")}>
+                      See all {reviewItems.length} reviews
+                    </button>
                   ) : null}
                 </div>
-                <button type="submit" className="btn product-intro__cta" style={{ marginTop: "1rem" }} disabled={submitReviewMutation.isPending}>
-                  {submitReviewMutation.isPending ? "Submitting..." : "Submit Review"}
+              </div>
+            ) : (
+              <div className="reviews__empty-state">
+                <p>No reviews yet. Be the first to share your experience.</p>
+                <button type="button" className="btn reviews__cta-primary" onClick={() => openReviewsModal("write")}>
+                  Write a Review
                 </button>
-                {!product.wooId ? (
-                  <p style={{ marginTop: "0.6rem", color: "#b04545" }}>
-                    Reviews are currently unavailable for this product.
-                  </p>
-                ) : null}
-                {reviewsQuery.isFetching ? (
-                  <p style={{ marginTop: "0.6rem", color: "var(--color-gray2)" }}>Refreshing reviews…</p>
-                ) : null}
-                {reviewFeedback ? (
-                  <p style={{ marginTop: "0.6rem", color: reviewFeedback.tone === "success" ? "#2f6f44" : "#b04545" }}>
-                    {reviewFeedback.message}
-                  </p>
-                ) : null}
-              </form>
+              </div>
+            )}
           </div>
         </section>
 
@@ -973,6 +909,200 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
           </div>
         </section>
       </main>
+
+      {/* ── REVIEWS MODAL ─────────────────────────────────────────── */}
+      {reviewsModalOpen ? (
+        <div className="reviews-modal__overlay" role="dialog" aria-modal="true" onClick={() => setReviewsModalOpen(false)}>
+          <div className="reviews-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="reviews-modal__header">
+              <div className="reviews-modal__tabs">
+                <button
+                  type="button"
+                  className={`reviews-modal__tab${reviewsModalTab === "read" ? " is-active" : ""}`}
+                  onClick={() => setReviewsModalTab("read")}
+                >
+                  All Reviews{reviewSummary ? ` (${reviewSummary.count})` : ""}
+                </button>
+                <button
+                  type="button"
+                  className={`reviews-modal__tab${reviewsModalTab === "write" ? " is-active" : ""}`}
+                  onClick={() => setReviewsModalTab("write")}
+                >
+                  Write a Review
+                </button>
+              </div>
+              <button
+                type="button"
+                className="reviews-modal__close"
+                onClick={() => setReviewsModalOpen(false)}
+                aria-label="Close reviews"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+                  <path d="M1 1l16 16M17 1L1 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="reviews-modal__body">
+              {reviewsModalTab === "read" ? (
+                <div className="reviews-modal__read">
+                  {reviewSummary ? (
+                    <div className="reviews-modal__summary">
+                      <div className="reviews-modal__avg-block">
+                        <p className="reviews__avg">{reviewSummary.average.toFixed(1)}</p>
+                        <Stars rating={reviewSummary.average} size="lg" />
+                        <p className="reviews__total">Based on {reviewSummary.count} reviews</p>
+                      </div>
+                      <div className="reviews__bars">
+                        {reviewSummary.distribution.map((count, i) => {
+                          const star = 5 - i;
+                          const pct = reviewSummary.count > 0 ? Math.round((count / reviewSummary.count) * 100) : 0;
+                          return (
+                            <div key={star} className="reviews__bar-row">
+                              <span className="reviews__bar-label">{star}</span>
+                              <div className="reviews__bar-track">
+                                <div className="reviews__bar-fill" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="reviews__bar-pct">{pct}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="reviews__list">
+                    {reviewItems.length > 0 ? (
+                      reviewItems.map((review) => (
+                        <div key={review.id} className="review-card">
+                          <div className="review-card__top">
+                            <Stars rating={review.rating} />
+                            {review.verified ? <span className="review-card__verified">Verified Purchase</span> : null}
+                          </div>
+                          <h3 className="review-card__title">{review.title}</h3>
+                          <p className="review-card__body">{review.body}</p>
+                          <div className="review-card__meta">
+                            <span className="review-card__author">{review.author}</span>
+                            <span className="review-card__date">{review.date}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="reviews-modal__empty">
+                        <p>No reviews yet.</p>
+                        <button
+                          type="button"
+                          className="btn reviews__cta-primary"
+                          onClick={() => setReviewsModalTab("write")}
+                        >
+                          Be the first to review
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="reviews-modal__form-wrap">
+                  <form className="review-form" onSubmit={handleSubmitReview}>
+                    <div className="review-form__fields">
+                      <label className="review-form__field">
+                        <span className="review-form__label">Rating</span>
+                        <select
+                          className="review-form__select"
+                          value={reviewForm.rating}
+                          onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: Number(e.target.value) }))}
+                          required
+                        >
+                          <option value={5}>5 — Excellent</option>
+                          <option value={4}>4 — Good</option>
+                          <option value={3}>3 — Average</option>
+                          <option value={2}>2 — Fair</option>
+                          <option value={1}>1 — Poor</option>
+                        </select>
+                      </label>
+
+                      <label className="review-form__field">
+                        <span className="review-form__label">Title</span>
+                        <input
+                          className="review-form__input"
+                          type="text"
+                          value={reviewForm.title}
+                          onChange={(e) => setReviewForm((prev) => ({ ...prev, title: e.target.value }))}
+                          placeholder="Summarize your experience"
+                          required
+                        />
+                      </label>
+
+                      <label className="review-form__field review-form__field--wide">
+                        <span className="review-form__label">Review</span>
+                        <textarea
+                          className="review-form__textarea"
+                          value={reviewForm.body}
+                          onChange={(e) => setReviewForm((prev) => ({ ...prev, body: e.target.value }))}
+                          placeholder="Share what you liked, what improved, and who this is for."
+                          rows={5}
+                          required
+                        />
+                      </label>
+
+                      {!user ? (
+                        <>
+                          <label className="review-form__field">
+                            <span className="review-form__label">Name</span>
+                            <input
+                              className="review-form__input"
+                              type="text"
+                              value={reviewForm.author}
+                              onChange={(e) => setReviewForm((prev) => ({ ...prev, author: e.target.value }))}
+                              placeholder="Your name"
+                              required
+                            />
+                          </label>
+                          <label className="review-form__field">
+                            <span className="review-form__label">Email</span>
+                            <input
+                              className="review-form__input"
+                              type="email"
+                              value={reviewForm.email}
+                              onChange={(e) => setReviewForm((prev) => ({ ...prev, email: e.target.value }))}
+                              placeholder="you@example.com"
+                              required
+                            />
+                          </label>
+                        </>
+                      ) : null}
+                    </div>
+
+                    <div className="review-form__actions">
+                      <button
+                        type="submit"
+                        className="btn review-form__submit"
+                        disabled={submitReviewMutation.isPending || !product.wooId}
+                      >
+                        {submitReviewMutation.isPending ? "Submitting..." : "Submit Review"}
+                      </button>
+                      {reviewsQuery.isFetching ? (
+                        <span className="review-form__status">Refreshing reviews…</span>
+                      ) : null}
+                    </div>
+
+                    {!product.wooId ? (
+                      <p className="review-form__feedback review-form__feedback--error">
+                        Reviews are currently unavailable for this product.
+                      </p>
+                    ) : null}
+                    {reviewFeedback ? (
+                      <p className={`review-form__feedback review-form__feedback--${reviewFeedback.tone}`}>
+                        {reviewFeedback.message}
+                      </p>
+                    ) : null}
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Footer />
     </div>
