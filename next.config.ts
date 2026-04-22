@@ -5,6 +5,7 @@ type RemotePattern = NonNullable<NonNullable<NextConfig["images"]>["remotePatter
 function buildRemotePatterns(): RemotePattern[] {
   const patterns: RemotePattern[] = [
     { protocol: "https", hostname: "images.unsplash.com" },
+    { protocol: "https", hostname: "picsum.photos" },
   ];
 
   const storeUrl = process.env.WOOCOMMERCE_STORE_URL;

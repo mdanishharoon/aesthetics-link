@@ -42,7 +42,7 @@ export default function Connect() {
             </h2>
             <div className="connect__image">
               <div className="media-img desktop">
-                <Image alt="Connect" src="/images/connect.jpg" fill sizes="66vw" style={{ objectFit: "cover" }} />
+                <Image alt="Connect" src="/images/instagram.jpeg" fill sizes="66vw" style={{ objectFit: "cover", objectPosition: "center" }} />
               </div>
               <div className="media-img mobile">
                 <Image alt="Connect" src="/images/connect-m.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} />

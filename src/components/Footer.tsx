@@ -78,7 +78,7 @@ export default function Footer() {
       <div className="footer__parallax">
         <div className="wrapper">
           <div className="media-img desktop footer__parallax-image">
-            <Image ref={footerImgRef} alt="Footer" src="/images/footer.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} className="parallax-image-asset" />
+            <Image ref={footerImgRef} alt="Footer" src="/images/footer2.png" fill sizes="100vw" style={{ objectFit: "cover" }} className="parallax-image-asset" />
           </div>
           <div className="media-img mobile footer__parallax-image">
             <Image alt="Footer" src="/images/footer-m.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} />
@@ -115,7 +115,7 @@ export default function Footer() {
                 <p className="subtitle text-gray2">Contact Us</p>
                 <ul>
                   <li><a href="mailto:hello@aestheticslink.com" className="link">hello@aestheticslink.com</a></li>
-                  <li><a href="tel:+111122223333" className="link">1111-2222-3333</a></li>
+                  <li><a href="tel:+111122223333" className="link">01614136032</a></li>
                 </ul>
               </div>
             </div>

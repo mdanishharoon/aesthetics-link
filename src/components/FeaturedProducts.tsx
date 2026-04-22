@@ -2,25 +2,6 @@ import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-function QuickCartIcon() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-      <circle cx="13" cy="13" r="13" fill="white" />
-      <path
-        d="M8.77357 10.7989C8.81474 10.099 9.39438 9.55243 10.0955 9.55243H16.0403C16.7415 9.55243 17.3211 10.099 17.3623 10.7989L17.7342 17.1212C17.779 17.8819 17.1742 18.5233 16.4122 18.5233H9.72364C8.9617 18.5233 8.35692 17.8819 8.40167 17.1212L8.77357 10.7989Z"
-        stroke="#424242"
-        strokeWidth="0.601938"
-      />
-      <path
-        d="M15.883 10.9417C15.883 8.76477 14.6224 7 13.0675 7C11.5125 7 10.252 8.76477 10.252 10.9417"
-        stroke="#424242"
-        strokeWidth="0.601938"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 export type LandingFeaturedProduct = {
   href: string;
   category: string;
@@ -102,44 +83,44 @@ export default function FeaturedProducts({
 
         <div className="featured__grid">
           {featuredProducts.map((product, i) => (
-            <Link
+            <article
               key={product.href}
-              href={product.href}
-              className="product__card is-active reveal-up-stagger"
+              className="shop-product-card reveal-up-stagger"
               data-reveal
-              style={{ backgroundColor: product.bg, "--stagger": `${i * 0.1}s` } as React.CSSProperties}
+              style={{ "--card-accent": product.bg, "--stagger": `${i * 0.1}s` } as React.CSSProperties}
             >
-              <div className="product__card-head">
-                <p className="product__card-category pill-fill">{product.category}</p>
-                <div className="product__card-quickcart">
-                  <QuickCartIcon />
-                </div>
-              </div>
-              <div className="product__content">
-                <div className="product__card-img">
+              <Link href={product.href} className="shop-product-card__inner">
+                <div className="shop-product-card__image-wrap featured-card__image-wrap">
+                  <div className="shop-product-card__image-overlay" />
                   <Image
                     src={product.imageSrc}
                     alt={product.title}
                     fill
                     sizes="(max-width: 768px) 50vw, 25vw"
-                    style={{ objectFit: "contain" }}
+                    className="shop-product-card__img featured-card__img"
                   />
-                </div>
-                <div className="product__card-img2">
                   <Image
                     src={product.imageHoverSrc}
                     alt=""
                     fill
                     sizes="(max-width: 768px) 50vw, 25vw"
-                    style={{ objectFit: "contain" }}
+                    className="shop-product-card__img featured-card__img--hover"
                   />
+                  <span className="shop-product-card__category pill-fill">{product.category}</span>
                 </div>
-                <div className="product__card-foot">
-                  <h3 className="product__card-title">{product.title}</h3>
-                  <p className="product-price">{product.price}</p>
+
+                <div className="shop-product-card__body">
+                  <div className="shop-product-card__text">
+                    <h3 className="shop-product-card__name">{product.title}</h3>
+                  </div>
+                  <p className="shop-product-card__price product-price">{product.price}</p>
                 </div>
-              </div>
-            </Link>
+              </Link>
+
+              <Link href={product.href} className="shop-product-card__cta shop-product-card__cta--link" aria-label={`Shop ${product.title}`}>
+                <span>Shop Now</span>
+              </Link>
+            </article>
           ))}
         </div>
       </div>

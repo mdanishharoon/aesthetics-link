@@ -62,13 +62,9 @@ export default async function Home() {
   const inStock = catalog.filter((product) => product.inStock !== false);
   const source = inStock.length > 0 ? inStock : catalog;
 
-  const featuredProducts = repeatProducts(source, 4).map(toFeaturedCard);
-  const bestsellers = repeatProducts(source.slice(0, 6), 3).map((product) =>
-    toExploreCard(product, 'pure'),
-  );
-  const newArrivals = repeatProducts(source.slice(3, 12), 4).map((product) =>
-    toExploreCard(product, 'varnaya'),
-  );
+  const featuredProducts = source.slice(0, 6).map(toFeaturedCard);
+  const bestsellers = source.slice(0, 6).map((p) => toExploreCard(p, 'pure'));
+  const newArrivals = source.slice(0, 6).map((p) => toExploreCard(p, 'varnaya'));
 
   return (
     <div className="index">

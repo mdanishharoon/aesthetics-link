@@ -59,34 +59,27 @@ function ProductCard({
   price,
   imageSrc,
   imageHoverSrc,
-  variant = "pure",
   isActive = false,
-}: ProductCardProps & { isActive?: boolean }) {
+}: Omit<ProductCardProps, "variant"> & { isActive?: boolean }) {
   return (
-    <Link
-      href={href}
-      className={`product__card${isActive ? " is-active" : ""}`}
-      style={{
-        backgroundColor: variant === "varnaya" ? "#D8D0C4" : "#F1CCCF",
-      }}
-    >
-      <div className="product__card-head">
-        <p className="product__card-category pill-fill">{category}</p>
-        <div className="product__card-quickcart">
-          <QuickCartIcon />
+    <Link href={href} className={`product__card${isActive ? " is-active" : ""}`}>
+      <div className="product__card-media">
+        <div className="product__card-head">
+          <p className="product__card-category pill-fill">{category}</p>
+          <div className="product__card-quickcart">
+            <QuickCartIcon />
+          </div>
         </div>
-      </div>
-      <div className="product__content">
         <div className="product__card-img">
-          <Image src={imageSrc} alt={title} fill sizes="200px" style={{ objectFit: "contain" }} />
+          <Image src={imageSrc} alt={title} fill sizes="280px" style={{ objectFit: "cover" }} />
         </div>
         <div className="product__card-img2">
-          <Image src={imageHoverSrc} alt="" fill sizes="200px" style={{ objectFit: "contain" }} />
+          <Image src={imageHoverSrc} alt="" fill sizes="280px" style={{ objectFit: "cover" }} />
         </div>
-        <div className="product__card-foot">
-          <h3 className="product__card-title">{title}</h3>
-          <p className="product-price">{price}</p>
-        </div>
+      </div>
+      <div className="product__card-foot">
+        <h3 className="product__card-title">{title}</h3>
+        <p className="product-price">{price}</p>
       </div>
     </Link>
   );

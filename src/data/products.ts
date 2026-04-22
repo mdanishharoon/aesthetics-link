@@ -9,6 +9,22 @@ export type KeyIngredient = {
   desc: string;
 };
 
+export type ProductReview = {
+  id: string;
+  author: string;
+  rating: number;
+  date: string;
+  title: string;
+  body: string;
+  verified: boolean;
+};
+
+export type ReviewSummary = {
+  average: number;
+  count: number;
+  distribution: [number, number, number, number, number]; // 5→1
+};
+
 export type Product = {
   wooId?: number;
   slug: string;
@@ -38,6 +54,8 @@ export type Product = {
     texture: string;
   };
   accentBg: string;
+  reviewSummary?: ReviewSummary;
+  reviews?: ProductReview[];
 };
 
 export const products: Product[] = [
@@ -97,6 +115,13 @@ export const products: Product[] = [
       texture: "https://picsum.photos/seed/uvglowbalm-t/1400/900",
     },
     accentBg: "#F1CCCF",
+    reviewSummary: { average: 4.7, count: 89, distribution: [58, 21, 7, 2, 1] },
+    reviews: [
+      { id: "uvg-1", author: "Priya M.", rating: 5, date: "12 Mar 2025", title: "Best SPF I've ever used", body: "I've tried dozens of SPFs and they always leave me either greasy or with a white cast. This one is completely different — it genuinely glows on the skin and my skin tone looks more even by the end of the day. Repurchasing for the third time.", verified: true },
+      { id: "uvg-2", author: "Sarah K.", rating: 5, date: "28 Feb 2025", title: "My morning routine staple", body: "I use this as the last step every morning and I've had so many compliments on my skin since starting. The glow isn't shimmery or glittery — just looks like really healthy skin. Light enough to wear under foundation too.", verified: true },
+      { id: "uvg-3", author: "Amara D.", rating: 4, date: "14 Jan 2025", title: "Great product, slightly pricey", body: "The formula is genuinely luxurious and I can feel the difference in my skin's texture and brightness. Docking one star only because I go through it faster than I'd like — I wish the tube was bigger for the price.", verified: true },
+      { id: "uvg-4", author: "Rachel T.", rating: 5, date: "3 Jan 2025", title: "Sorted my uneven skin tone", body: "I have mild hyperpigmentation from old acne scars and I was sceptical this would do anything beyond SPF. Within about 3 weeks of daily use the marks look noticeably lighter. The glow effect is a bonus.", verified: false },
+    ],
   },
   {
     slug: "glutanex-spot-cream",
@@ -154,6 +179,13 @@ export const products: Product[] = [
       texture: "https://picsum.photos/seed/spotcream-t/1400/900",
     },
     accentBg: "#D8D0C4",
+    reviewSummary: { average: 4.8, count: 134, distribution: [97, 28, 6, 2, 1] },
+    reviews: [
+      { id: "spt-1", author: "Jade L.", rating: 5, date: "18 Mar 2025", title: "Faded my acne marks in weeks", body: "I've had post-acne marks for years that wouldn't shift with anything. Started using this twice a day and by week 4 my skin was noticeably clearer. My esthetician asked what I'd changed. Nothing short of miraculous for a topical product.", verified: true },
+      { id: "spt-2", author: "Nadia F.", rating: 5, date: "22 Feb 2025", title: "Precise, effective, no irritation", body: "I have sensitive skin and was terrified to try a concentrated treatment. Not a hint of irritation even from day one. The spots I'd had for over a year have mostly gone now, 6 weeks in.", verified: true },
+      { id: "spt-3", author: "Olivia H.", rating: 4, date: "5 Feb 2025", title: "Solid treatment, patience required", body: "It works — I won't dispute that. But you need to commit to using it consistently for at least 3-4 weeks before you'll see results. Once they came though, they stuck around.", verified: true },
+      { id: "spt-4", author: "Zara B.", rating: 5, date: "10 Jan 2025", title: "Nothing else has worked like this", body: "I've spent a lot of money on spot treatments over the years. This is the first one where I can actually photograph a before and after and see a real, undeniable difference. Genuinely life-changing for my confidence.", verified: true },
+    ],
   },
   {
     slug: "glutanex-snow-white-cream",
@@ -211,6 +243,13 @@ export const products: Product[] = [
       texture: "https://picsum.photos/seed/snowwhite-t/1400/900",
     },
     accentBg: "#F1CCCF",
+    reviewSummary: { average: 4.6, count: 76, distribution: [48, 18, 7, 2, 1] },
+    reviews: [
+      { id: "swc-1", author: "Mia T.", rating: 5, date: "20 Mar 2025", title: "Finally a moisturiser that does it all", body: "I've replaced my serum, moisturiser and primer with this. It genuinely makes my skin look airbrushed — even, bright, plump. My skin tone has evened out significantly after 5 weeks of use. I can't imagine going back.", verified: true },
+      { id: "swc-2", author: "Kezia A.", rating: 5, date: "8 Mar 2025", title: "Incredible for dull, tired skin", body: "I work long hours and my skin always looks exhausted. This has completely changed that — within days my skin looked more awake. The cream feels rich but doesn't sit heavily on the skin at all.", verified: true },
+      { id: "swc-3", author: "Isabelle R.", rating: 4, date: "14 Feb 2025", title: "Really good but layering is key", body: "Excellent cream. I found it works even better when layered over the Aqua Booster — together they're incredible. On its own it's still a 4-star product, but stacked it's 5+.", verified: false },
+      { id: "swc-4", author: "Hannah W.", rating: 4, date: "29 Jan 2025", title: "Genuinely brightening formula", body: "I was sceptical of 'brightening' claims but this one actually delivers. My skin looks more even and healthier overall. Taking off one star only because I find the packaging a little tricky to get the last bits out.", verified: true },
+    ],
   },
   {
     slug: "glutanex-retinol-eye-cream",
@@ -268,6 +307,13 @@ export const products: Product[] = [
       texture: "https://picsum.photos/seed/retinoleye-t/1400/900",
     },
     accentBg: "#D8D0C4",
+    reviewSummary: { average: 4.9, count: 52, distribution: [46, 4, 1, 1, 0] },
+    reviews: [
+      { id: "rec-1", author: "Camille D.", rating: 5, date: "15 Mar 2025", title: "Made my under-eyes look 10 years younger", body: "I'm 44 and have had deep dark circles my whole life. I've tried everything. This is the first product that has made a visible, lasting difference. My dark circles are significantly lighter after 6 weeks and the fine lines around my eyes have softened noticeably.", verified: true },
+      { id: "rec-2", author: "Sophie M.", rating: 5, date: "1 Mar 2025", title: "No irritation — amazing for retinol sceptics", body: "I had a bad experience with retinol years ago and swore off it. The encapsulated formula in this is completely different — zero redness, zero peeling, just results. My eye area is smoother than it's been in years.", verified: true },
+      { id: "rec-3", author: "Layla K.", rating: 5, date: "17 Feb 2025", title: "The puffiness reduction is real", body: "I wake up puffy every morning — always have. After 2 weeks of using this nightly the puffiness is noticeably reduced when I wake up. My friends have commented that I look less tired. Completely sold.", verified: true },
+      { id: "rec-4", author: "Eleanor G.", rating: 4, date: "3 Feb 2025", title: "Excellent, just needs patience", body: "Results aren't overnight but they're real. By week 3 I started to see a difference in the texture around my eyes and by week 5 the lines were softer. Worth every penny if you're consistent.", verified: true },
+    ],
   },
   {
     slug: "glutanex-aqua-booster",
@@ -325,6 +371,13 @@ export const products: Product[] = [
       texture: "https://picsum.photos/seed/aquaboost-t/1400/900",
     },
     accentBg: "#F1CCCF",
+    reviewSummary: { average: 4.7, count: 61, distribution: [42, 13, 4, 1, 1] },
+    reviews: [
+      { id: "aqb-1", author: "Tara S.", rating: 5, date: "19 Mar 2025", title: "My skin drinks this up", body: "I live in a dry climate and my skin always felt tight and dehydrated regardless of what I used. Within the first week of using this twice daily my skin completely transformed — plump, bouncy and no tightness at all.", verified: true },
+      { id: "aqb-2", author: "Fatima N.", rating: 5, date: "11 Mar 2025", title: "Perfect serum base for any routine", body: "This layers beautifully under everything. I use it before my moisturiser in the morning and the rest of my skincare just absorbs so much better. My skin looks more alive and healthy since I started.", verified: true },
+      { id: "aqb-3", author: "Lucy P.", rating: 4, date: "24 Feb 2025", title: "Genuinely plumping formula", body: "I could feel the plumping effect almost immediately — my skin felt fuller and more cushioned. I've stayed consistently hydrated even through a bout of travelling and changes in climate. Solid product.", verified: true },
+      { id: "aqb-4", author: "Mara J.", rating: 5, date: "7 Jan 2025", title: "Solved my dehydration lines", body: "I had fine lines across my forehead that were mostly dehydration lines rather than proper wrinkles. After 3 weeks of this, they've basically disappeared. My skin is so much bouncier. The bottle looks small but a little goes a long way.", verified: false },
+    ],
   },
   {
     slug: "glutanex-night-serum",
@@ -382,6 +435,13 @@ export const products: Product[] = [
       texture: "https://picsum.photos/seed/nightserum-t/1400/900",
     },
     accentBg: "#D8D0C4",
+    reviewSummary: { average: 4.8, count: 108, distribution: [78, 22, 5, 2, 1] },
+    reviews: [
+      { id: "ns-1", author: "Aisha R.", rating: 5, date: "17 Mar 2025", title: "Wake up to completely different skin", body: "I was tired of spending money on overnight products that did nothing by morning. This is different. I wake up and my skin looks visibly brighter, more even-toned and just healthier. I've been using it for 8 weeks and the results keep improving.", verified: true },
+      { id: "ns-2", author: "Chloe B.", rating: 5, date: "2 Mar 2025", title: "The brightening is undeniable", body: "I have melasma that I've been managing for years. This is now a permanent fixture in my PM routine — my skin tone is more even than it's been in a decade. The texture improvement is a wonderful bonus.", verified: true },
+      { id: "ns-3", author: "Nina V.", rating: 4, date: "19 Feb 2025", title: "Noticeable results after consistent use", body: "I was on the fence after the first two weeks — results were subtle. But by week 4-5 there was a real shift in brightness and texture. The fine lines around my mouth have softened too, which I wasn't expecting.", verified: true },
+      { id: "ns-4", author: "Yasmin H.", rating: 5, date: "12 Jan 2025", title: "Worth every penny", body: "I've tried a lot of serums in this price range. This is the first where I can honestly say it earns its price. The Kojic Acid and Glutathione combination is exceptional. My skin looks like I've had a professional treatment every single morning.", verified: true },
+    ],
   },
 ];
 

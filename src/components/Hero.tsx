@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import AestheticsLinkWordmark from "@/components/AestheticsLinkWordmark";
 
 export default function Hero() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -72,9 +71,6 @@ export default function Hero() {
 
   return (
     <section id="intro">
-      <Link href="/" className="intro__wordmark hero-wordmark-reveal" aria-label="AestheticsLink home">
-        <AestheticsLinkWordmark />
-      </Link>
       <div className="intro__text">
         <div className="intro__title text-center text-none reveal-up is-visible hero-title-reveal">
           <h1>

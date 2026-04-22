@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useParallax } from "@/hooks/useParallax";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MotionProvider from "@/components/MotionProvider";
@@ -22,6 +21,7 @@ import {
 } from "@/lib/storefront/client";
 import type {
   StorefrontCart,
+  StorefrontCatalogProduct,
   StorefrontDetailProduct,
   StorefrontVariationAttribute,
 } from "@/lib/storefront/types";
@@ -46,6 +46,16 @@ function ArrowLongIcon() {
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+function Stars({ rating, size = "sm" }: { rating: number; size?: "sm" | "lg" }) {
+  const pct = Math.round((rating / 5) * 100);
+  return (
+    <span className={`stars stars--${size}`} aria-label={`${rating} out of 5 stars`}>
+      <span className="stars__fill" style={{ width: `${pct}%` }}>★★★★★</span>
+      <span className="stars__empty" aria-hidden>★★★★★</span>
+    </span>
   );
 }
 
@@ -140,10 +150,7 @@ function normalizePriceLabel(value: string | null | undefined): string {
   return normalized.trim();
 }
 
-export default function ProductDetail({ product }: { product: StorefrontDetailProduct }) {
-  const heroImgRef = useParallax<HTMLImageElement>(0.12);
-  const detailImgRef = useParallax<HTMLImageElement>(0.15);
-  const textureRef = useParallax<HTMLImageElement>(0.18);
+export default function ProductDetail({ product, related = [] }: { product: StorefrontDetailProduct; related?: StorefrontCatalogProduct[] }) {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [addStatus, setAddStatus] = useState<{ tone: "success" | "error"; message: string } | null>(null);
@@ -433,7 +440,7 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
   return (
     <div className="product-page">
       <MotionProvider />
-      <Header />
+      <Header forceScrolled />
 
       {cartOpen && (
         <CartSidebar
@@ -462,6 +469,13 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
               </span>
             </h1>
             <p className="product-intro__tagline">{product.tagline}</p>
+            {product.reviewSummary ? (
+              <a href="#product-reviews" className="product-rating-badge">
+                <Stars rating={product.reviewSummary.average} />
+                <span className="product-rating-badge__score">{product.reviewSummary.average.toFixed(1)}</span>
+                <span className="product-rating-badge__count">({product.reviewSummary.count} reviews)</span>
+              </a>
+            ) : null}
             <p className="product-intro__price" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
               {effectiveRegularPrice && effectiveRegularPrice !== effectivePrice ? (
                 <span style={{ opacity: 0.6, textDecoration: "line-through", fontSize: "0.8em" }}>{effectiveRegularPrice}</span>
@@ -531,21 +545,42 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
                 {addStatus.message}
               </p>
             ) : null}
+
+            <div className="product-trust">
+              <div className="product-trust__item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                  <circle cx="5.5" cy="18.5" r="2" stroke="currentColor" strokeWidth="1.5"/>
+                  <circle cx="19.5" cy="18.5" r="2" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+                <span>Free UK delivery over £50</span>
+              </div>
+              <div className="product-trust__item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M3 3v5h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Easy 30-day returns</span>
+              </div>
+              <div className="product-trust__item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <span>Secure checkout</span>
+              </div>
+            </div>
           </div>
 
           <div className="product-intro__image">
             <div className="product-intro__image-overlay" />
-            <div className="product-intro__parallax">
-              <Image
-                ref={heroImgRef}
-                src={product.images.hero}
-                alt={product.images.heroAlt}
-                fill
-                sizes="55vw"
-                style={{ objectFit: "cover" }}
-                className="parallax-image-asset"
-              />
-            </div>
+            <Image
+              src={product.images.hero}
+              alt={product.images.heroAlt}
+              fill
+              sizes="55vw"
+              style={{ objectFit: "cover" }}
+            />
           </div>
         </section>
 
@@ -562,15 +597,13 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
               <h2 className="product-claim__sub">{product.claim.sub}</h2>
             </div>
 
-            <div className="product-claim__image parallax-scroll">
+            <div className="product-claim__image">
               <Image
-                ref={textureRef}
                 src={product.images.texture}
                 alt={product.name}
                 fill
                 sizes="45vw"
                 style={{ objectFit: "cover" }}
-                className="parallax-image-asset"
               />
             </div>
 
@@ -585,13 +618,11 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
           <div className="half__grid reveal-up" data-reveal>
             <div className="half__grid-img">
               <Image
-                ref={detailImgRef}
                 src={product.images.detail}
                 alt={product.images.detailAlt}
                 fill
                 sizes="50vw"
                 style={{ objectFit: "cover" }}
-                className="parallax-image-asset"
               />
             </div>
 
@@ -672,7 +703,89 @@ export default function ProductDetail({ product }: { product: StorefrontDetailPr
           </div>
         </section>
 
-        {/* ── 6. BACK LINK ─────────────────────────────────────────── */}
+        {/* ── 6. REVIEWS ───────────────────────────────────────────── */}
+        {product.reviewSummary && product.reviews?.length ? (
+          <section id="product-reviews" className="reveal-up" data-reveal>
+            <div className="container">
+              <div className="reviews__head">
+                <h2 className="reviews__title">Customer <span className="font-serif">Reviews</span></h2>
+              </div>
+              <div className="reviews__body">
+                <div className="reviews__summary">
+                  <p className="reviews__avg">{product.reviewSummary.average.toFixed(1)}</p>
+                  <Stars rating={product.reviewSummary.average} size="lg" />
+                  <p className="reviews__total">Based on {product.reviewSummary.count} reviews</p>
+                  <div className="reviews__bars">
+                    {product.reviewSummary.distribution.map((count, i) => {
+                      const star = 5 - i;
+                      const pct = Math.round((count / product.reviewSummary!.count) * 100);
+                      return (
+                        <div key={star} className="reviews__bar-row">
+                          <span className="reviews__bar-label">{star}</span>
+                          <div className="reviews__bar-track">
+                            <div className="reviews__bar-fill" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="reviews__bar-pct">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="reviews__list">
+                  {product.reviews.map((review) => (
+                    <div key={review.id} className="review-card">
+                      <div className="review-card__top">
+                        <Stars rating={review.rating} />
+                        {review.verified ? (
+                          <span className="review-card__verified">Verified Purchase</span>
+                        ) : null}
+                      </div>
+                      <h3 className="review-card__title">{review.title}</h3>
+                      <p className="review-card__body">{review.body}</p>
+                      <div className="review-card__meta">
+                        <span className="review-card__author">{review.author}</span>
+                        <span className="review-card__date">{review.date}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {/* ── 7. RELATED PRODUCTS ──────────────────────────────────── */}
+        {related.length > 0 ? (
+          <section id="product-related" className="reveal-up" data-reveal>
+            <div className="container">
+              <div className="related__head">
+                <h2 className="related__title">You May Also <span className="font-serif">Like</span></h2>
+              </div>
+              <div className="related__grid">
+                {related.map((item) => (
+                  <Link key={item.slug} href={`/products/${item.slug}`} className="related-card">
+                    <div className="related-card__img-wrap" style={{ background: item.accentBg }}>
+                      <Image
+                        src={item.image}
+                        alt={item.imageAlt}
+                        fill
+                        sizes="(max-width: 767px) 50vw, 25vw"
+                        style={{ objectFit: "cover" }}
+                      />
+                    </div>
+                    <div className="related-card__body">
+                      <p className="related-card__category">{item.category}</p>
+                      <h3 className="related-card__name">{item.shortName}</h3>
+                      <p className="related-card__price">{item.price}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {/* ── 8. BACK LINK ─────────────────────────────────────────── */}
         <section id="product-back" className="reveal-up" data-reveal>
           <div className="container text-center">
             <Link href="/products" className="product-back__link">

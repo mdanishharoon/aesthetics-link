@@ -11,9 +11,9 @@ import { fetchCart, getCachedCartSnapshot } from "@/lib/storefront/client";
 import { decodeEntities } from "@/lib/utils/text";
 import type { StorefrontCart } from "@/lib/storefront/types";
 
-export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
+export default function Header({ darkLogo = false, forceScrolled = false }: { darkLogo?: boolean; forceScrolled?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled, setScrolled] = useState(forceScrolled);
   const [hidden, setHidden] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
 
     const onScroll = () => {
       const currentY = window.scrollY;
-      setScrolled(currentY > 50);
+      setScrolled(forceScrolled || currentY > 50);
       setHidden(currentY > 140 && currentY > lastY && !menuOpen);
       lastY = currentY;
     };

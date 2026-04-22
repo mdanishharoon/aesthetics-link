@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getDetailProductBySlug } from "@/lib/storefront/server";
+import { getDetailProductBySlug, getCatalogProducts } from "@/lib/storefront/server";
 import ProductDetail from "./ProductDetail";
 
 type Props = {
@@ -21,7 +21,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const product = await getDetailProductBySlug(slug);
+  const [product, catalog] = await Promise.all([
+    getDetailProductBySlug(slug),
+    getCatalogProducts(),
+  ]);
   if (!product) notFound();
-  return <ProductDetail product={product} />;
+  const related = catalog.filter((p) => p.slug !== slug).slice(0, 4);
+  return <ProductDetail product={product} related={related} />;
 }

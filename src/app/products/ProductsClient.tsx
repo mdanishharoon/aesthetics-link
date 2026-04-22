@@ -716,7 +716,7 @@ export default function ProductsClient({
   return (
     <div className="shop-page">
       <MotionProvider />
-      <Header />
+      <Header darkLogo />
 
       {cartOpen && (
         <CartSidebar
