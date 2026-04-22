@@ -491,6 +491,10 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
     }
 
     setReviewSubmitting(true);
+    setReviewFeedback({
+      tone: "success",
+      message: "Submitting your review...",
+    });
     setReviewsModalTab("read");
     setReviewsModalOpen(false);
 
@@ -503,7 +507,10 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
       email: user ? undefined : reviewForm.email,
     })
       .then(() => {
-        setReviewFeedback(null);
+        setReviewFeedback({
+          tone: "success",
+          message: "Thanks! Your review has been submitted.",
+        });
         setReviewForm((prev) => ({
           ...prev,
           title: "",
@@ -620,8 +627,9 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
               className="product-back__link product-back__link--btn"
               style={{ marginTop: "0.6rem" }}
               onClick={() => openReviewsModal("write")}
+              disabled={reviewSubmitting}
             >
-              <p>Write a Review</p>
+              <p>{reviewSubmitting ? "Submitting..." : "Write a Review"}</p>
             </button>
             {reviewFeedback ? (
               <p
