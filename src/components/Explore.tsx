@@ -50,6 +50,8 @@ type ProductCardProps = {
   variant?: "pure" | "varnaya";
 };
 
+export type LandingExploreProduct = ProductCardProps;
+
 function ProductCard({
   href,
   category,
@@ -363,9 +365,17 @@ const refinedBlendsProducts: ProductCardProps[] = [
   },
 ];
 
-export default function Explore() {
+export default function Explore({
+  bestsellers,
+  newArrivals,
+}: {
+  bestsellers?: LandingExploreProduct[];
+  newArrivals?: LandingExploreProduct[];
+}) {
   const img1Ref = useParallax<HTMLImageElement>(0.12);
   const img2Ref = useParallax<HTMLImageElement>(0.12);
+  const bestSellerProducts = bestsellers && bestsellers.length > 0 ? bestsellers : pureBrillianceProducts;
+  const newArrivalProducts = newArrivals && newArrivals.length > 0 ? newArrivals : refinedBlendsProducts;
 
   return (
     <section id="explore" style={{ position: "relative", margin: 0 }}>
@@ -412,7 +422,7 @@ export default function Explore() {
             <Link href="/products" className="superscript">Shop all</Link>
           </div>
           <div className="half__grid-product">
-            <ProductRail products={pureBrillianceProducts} reverse />
+            <ProductRail products={bestSellerProducts} reverse />
           </div>
           <p className="text-uppercase maxwidth">
             Our most-loved formulas, trusted by thousands.
@@ -434,7 +444,7 @@ export default function Explore() {
             <Link href="/products" className="superscript">Shop all</Link>
           </div>
           <div className="half__grid-product">
-            <ProductRail products={refinedBlendsProducts} />
+            <ProductRail products={newArrivalProducts} />
           </div>
           <p className="text-uppercase maxwidth">
             The latest additions to our curated edit.

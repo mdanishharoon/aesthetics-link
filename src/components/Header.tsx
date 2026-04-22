@@ -8,6 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useStorefrontNavigation } from "@/components/StorefrontNavigationProvider";
 import { DEFAULT_NAVIGATION } from "@/lib/storefront/constants";
 import { fetchCart, getCachedCartSnapshot } from "@/lib/storefront/client";
+import { decodeEntities } from "@/lib/utils/text";
 import type { StorefrontCart } from "@/lib/storefront/types";
 
 export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
@@ -66,6 +67,10 @@ export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
     setMenuOpen(false);
     setMobileExpanded(null);
     setActiveDropdown(null);
+  };
+
+  const formatNavLabel = (value: string): string => {
+    return decodeEntities(value).replace(/\s+/g, " ").trim();
   };
 
   return (
@@ -138,7 +143,7 @@ export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
                   <div className="navbar-dropdown-col">
                     {navigation.top.map((link) => (
                       <Link key={link.href} href={link.href} className="navbar-dropdown-link" onClick={closeAll}>
-                        {link.label}
+                        {formatNavLabel(link.label)}
                       </Link>
                     ))}
                   </div>
@@ -148,7 +153,7 @@ export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
                     <div className="navbar-dropdown-concerns">
                       {navigation.concerns.map((link) => (
                         <Link key={link.href} href={link.href} className="navbar-dropdown-link navbar-dropdown-link--sm" onClick={closeAll}>
-                          {link.label}
+                          {formatNavLabel(link.label)}
                         </Link>
                       ))}
                     </div>
@@ -160,13 +165,13 @@ export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
                   <div className="navbar-accordion-inner">
                     {navigation.top.map((link) => (
                       <Link key={link.href} href={link.href} className="navbar-accordion-link" onClick={closeAll}>
-                        {link.label}
+                        {formatNavLabel(link.label)}
                       </Link>
                     ))}
                     <span className="navbar-accordion-sublabel superscript">By Concern</span>
                     {navigation.concerns.map((link) => (
                       <Link key={link.href} href={link.href} className="navbar-accordion-link navbar-accordion-link--sm" onClick={closeAll}>
-                        {link.label}
+                        {formatNavLabel(link.label)}
                       </Link>
                     ))}
                   </div>
@@ -210,7 +215,7 @@ export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
                   <div className="navbar-dropdown-col">
                     {navigation.brands.map((link) => (
                       <Link key={link.href} href={link.href} className="navbar-dropdown-link" onClick={closeAll}>
-                        {link.label}
+                        {formatNavLabel(link.label)}
                       </Link>
                     ))}
                     <div className="navbar-dropdown-divider" />
@@ -225,7 +230,7 @@ export default function Header({ darkLogo = false }: { darkLogo?: boolean }) {
                   <div className="navbar-accordion-inner">
                     {navigation.brands.map((link) => (
                       <Link key={link.href} href={link.href} className="navbar-accordion-link" onClick={closeAll}>
-                        {link.label}
+                        {formatNavLabel(link.label)}
                       </Link>
                     ))}
                     <Link href="/products" className="navbar-accordion-link navbar-accordion-link--sm" onClick={closeAll}>

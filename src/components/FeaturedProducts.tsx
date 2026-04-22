@@ -21,7 +21,17 @@ function QuickCartIcon() {
   );
 }
 
-const FEATURED_PRODUCTS = [
+export type LandingFeaturedProduct = {
+  href: string;
+  category: string;
+  title: string;
+  price: string;
+  imageSrc: string;
+  imageHoverSrc: string;
+  bg: string;
+};
+
+const FEATURED_PRODUCTS: LandingFeaturedProduct[] = [
   {
     href: "/products/aha-brightening-exfoliant-cleanser-face-wash",
     category: "Bestseller",
@@ -60,7 +70,13 @@ const FEATURED_PRODUCTS = [
   },
 ] as const;
 
-export default function FeaturedProducts() {
+export default function FeaturedProducts({
+  products,
+}: {
+  products?: LandingFeaturedProduct[];
+}) {
+  const featuredProducts = products && products.length > 0 ? products : FEATURED_PRODUCTS;
+
   return (
     <section id="featured-products">
       <div className="container">
@@ -85,7 +101,7 @@ export default function FeaturedProducts() {
         </div>
 
         <div className="featured__grid">
-          {FEATURED_PRODUCTS.map((product, i) => (
+          {featuredProducts.map((product, i) => (
             <Link
               key={product.href}
               href={product.href}
