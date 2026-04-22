@@ -495,8 +495,13 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
       tone: "success",
       message: "Submitting your review...",
     });
-    setReviewsModalTab("read");
-    setReviewsModalOpen(false);
+    let allowAutoClose = true;
+    const closeTimer = window.setTimeout(() => {
+      if (allowAutoClose) {
+        setReviewsModalTab("read");
+        setReviewsModalOpen(false);
+      }
+    }, 700);
 
     const request = submitProductReview({
       productId: product.wooId ?? 0,
@@ -519,12 +524,16 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
         void reviewsQuery.refetch();
       })
       .catch((error) => {
+        allowAutoClose = false;
+        setReviewsModalTab("write");
+        setReviewsModalOpen(true);
         setReviewFeedback({
           tone: "error",
           message: error instanceof Error ? error.message : "Unable to submit review.",
         });
       })
       .finally(() => {
+        window.clearTimeout(closeTimer);
         reviewSubmitInFlightRef.current = null;
         setReviewSubmitting(false);
       });
