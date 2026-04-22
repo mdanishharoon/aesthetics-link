@@ -6293,8 +6293,8 @@ h5,
 }
 
 .profile-main {
-  padding-top: clamp(7rem, 12vw, 10rem);
-  padding-bottom: 8rem;
+  padding-top: clamp(5rem, 8vw, 7rem);
+  padding-bottom: 4rem;
 }
 
 .profile-dashboard {
@@ -6379,13 +6379,20 @@ h5,
   padding: 0.75rem 1.5rem;
   text-decoration: none;
   text-transform: uppercase;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease, background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.profile-dashboard__button:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .profile-dashboard__button:hover {
   background: #1a1a1a;
   border-color: #1a1a1a;
   color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
 }
 
 .profile-dashboard__button--secondary {
@@ -6414,7 +6421,7 @@ h5,
 .profile-dashboard__auth {
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
-  padding: clamp(4rem, 8vw, 7rem) 1.75rem clamp(4.5rem, 9vw, 8rem);
+  padding: clamp(3rem, 5vw, 4rem) 1.75rem;
 }
 
 /* ── Hero header ── */
@@ -6426,7 +6433,7 @@ h5,
   display: flex;
   gap: 2rem;
   justify-content: space-between;
-  padding: clamp(3rem, 5vw, 5rem) 1.75rem clamp(2.5rem, 4vw, 4rem);
+  padding: clamp(2rem, 3vw, 3rem) 1.75rem clamp(1.5rem, 2vw, 2rem);
 }
 
 .profile-hero__identity {
@@ -6443,12 +6450,18 @@ h5,
   display: flex;
   flex-shrink: 0;
   font-family: "PP Mori", sans-serif;
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  height: 5rem;
+  height: 3.5rem;
   justify-content: center;
   letter-spacing: 0.04em;
-  width: 5rem;
+  width: 3.5rem;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+}
+
+.profile-hero:hover .profile-identity__mark {
+  transform: scale(1.05) rotate(-5deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .profile-hero__meta {
@@ -6460,7 +6473,7 @@ h5,
 .profile-hero__name {
   color: var(--color-text);
   font-family: "Editorial New", serif;
-  font-size: clamp(2.8rem, 5.5vw, 5rem);
+  font-size: clamp(2rem, 3.5vw, 3rem);
   font-style: italic;
   font-weight: 300;
   letter-spacing: -0.035em;
@@ -6565,12 +6578,16 @@ h5,
   padding: 1.1rem 0 calc(1.1rem - 1.5px);
   text-decoration: none;
   text-transform: uppercase;
-  transition: color 160ms ease, border-color 160ms ease;
+  transition: color 160ms ease, border-color 160ms ease, opacity 160ms ease;
 }
 
 .profile-nav-strip__link:hover {
   border-color: var(--color-text);
   color: var(--color-text);
+}
+
+.profile-nav-strip:hover .profile-nav-strip__link:not(:hover) {
+  opacity: 0.6;
 }
 
 /* ── Main content panels ── */
@@ -6588,15 +6605,15 @@ h5,
 }
 
 .profile-orders {
-  padding: 2.5rem 1.75rem 3.5rem;
+  padding: 2rem 1.75rem 2.5rem;
 }
 
 .profile-order-detail {
-  padding: 2rem 1.75rem 3rem;
+  padding: 1.5rem 1.75rem 2rem;
 }
 
 .profile-settings {
-  padding: 3rem 1.75rem 5rem;
+  padding: 2rem 1.75rem 3rem;
 }
 
 /* ── Orders section ── */
@@ -6654,15 +6671,19 @@ h5,
 .profile-orders__row {
   align-items: center;
   border-bottom: 1px solid var(--color-border);
-  padding: 1.4rem 0;
-  transition: background-color 140ms ease;
+  padding: 1.4rem 0.75rem;
+  margin: 0 -0.75rem;
+  border-radius: 6px;
+  transition: background-color 200ms ease, transform 300ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.profile-orders__row:hover:not(.is-selected) {
+  background: rgba(243, 232, 231, 0.4);
+  transform: translateX(4px);
 }
 
 .profile-orders__row.is-selected {
   background: var(--color-preloader);
-  margin: 0 -1.25rem;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
 }
 
 .profile-orders__row:last-child {
