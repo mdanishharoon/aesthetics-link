@@ -2745,6 +2745,83 @@ function al_b2b_get_recent_audit_logs($limit = 25) {
 	return is_array($rows) ? $rows : array();
 }
 
+function al_b2b_table_exists($table_name) {
+	global $wpdb;
+
+	$table_name = (string) $table_name;
+	if ($table_name === '') {
+		return false;
+	}
+
+	$found = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->prepare('SHOW TABLES LIKE %s', $table_name)
+	);
+
+	return is_string($found) && $found === $table_name;
+}
+
+function al_b2b_get_newsletter_admin_snapshot() {
+	global $wpdb;
+
+	$newsletter_table = al_b2b_get_newsletter_table_name();
+	$events_table = al_b2b_get_marketing_event_table_name();
+
+	$empty = array(
+		'newsletter_table_ready' => false,
+		'events_table_ready' => false,
+		'status_counts' => array(),
+		'recent_subscribers' => array(),
+		'recent_events' => array(),
+	);
+
+	if (!al_b2b_table_exists($newsletter_table)) {
+		return $empty;
+	}
+
+	$empty['newsletter_table_ready'] = true;
+	$status_rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		"SELECT status, COUNT(*) AS total
+		 FROM {$newsletter_table}
+		 GROUP BY status
+		 ORDER BY total DESC",
+		ARRAY_A
+	);
+	$status_counts = array();
+	if (is_array($status_rows)) {
+		foreach ($status_rows as $row) {
+			$status = isset($row['status']) ? sanitize_key((string) $row['status']) : '';
+			$total = isset($row['total']) ? (int) $row['total'] : 0;
+			if ($status) {
+				$status_counts[$status] = $total;
+			}
+		}
+	}
+	$empty['status_counts'] = $status_counts;
+
+	$recent_subscribers = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		"SELECT email, source, customer_type, region, status, updated_at
+		 FROM {$newsletter_table}
+		 ORDER BY updated_at DESC
+		 LIMIT 10",
+		ARRAY_A
+	);
+	$empty['recent_subscribers'] = is_array($recent_subscribers) ? $recent_subscribers : array();
+
+	if (al_b2b_table_exists($events_table)) {
+		$empty['events_table_ready'] = true;
+		$recent_events = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			"SELECT event_name, email, source, customer_type, region, occurred_at
+			 FROM {$events_table}
+			 ORDER BY id DESC
+			 LIMIT 12",
+			ARRAY_A
+		);
+		$empty['recent_events'] = is_array($recent_events) ? $recent_events : array();
+	}
+
+	return $empty;
+}
+
 function al_b2b_render_clinic_applications_page() {
 	if (!current_user_can('promote_users')) {
 		wp_die('Insufficient permissions.');
@@ -2759,7 +2836,13 @@ function al_b2b_render_clinic_applications_page() {
 	));
 
 	$audit_logs = al_b2b_get_recent_audit_logs();
+	$marketing_snapshot = al_b2b_get_newsletter_admin_snapshot();
 	$notice = isset($_GET['al_b2b_notice']) ? sanitize_key(wp_unslash($_GET['al_b2b_notice'])) : '';
+	$brevo_api_key_ready = (bool) al_b2b_get_brevo_api_key();
+	$brevo_list_ready = al_b2b_get_brevo_list_id() > 0;
+	$brevo_webhook_secret_ready = (bool) al_b2b_get_brevo_webhook_secret();
+	$newsletter_rest_url = rest_url('aesthetics-link/v1/newsletter/subscribe');
+	$webhook_rest_url = rest_url('aesthetics-link/v1/newsletter/webhook');
 	?>
 	<div class="wrap">
 		<h1>Clinic Applications</h1>
@@ -2869,6 +2952,121 @@ function al_b2b_render_clinic_applications_page() {
 							<td><?php echo (int) $log->actor_user_id; ?></td>
 							<td><?php echo esc_html((string) $log->ip_address); ?></td>
 							<td><code><?php echo esc_html($details_text); ?></code></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+
+		<h2 style="margin-top: 2rem;">Newsletter &amp; Marketing</h2>
+		<p style="max-width: 900px;">
+			Current integration status and latest activity across newsletter subscribers and marketing events.
+		</p>
+		<table class="widefat striped" style="margin-top: 0.75rem; max-width: 960px;">
+			<tbody>
+				<tr>
+					<th style="width: 240px;">Brevo API Key</th>
+					<td><?php echo $brevo_api_key_ready ? '<span style="color:#1d7f2c;">Configured</span>' : '<span style="color:#b32d2e;">Missing</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
+				</tr>
+				<tr>
+					<th>Brevo List ID</th>
+					<td><?php echo $brevo_list_ready ? '<span style="color:#1d7f2c;">Configured</span>' : '<span style="color:#b32d2e;">Missing</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
+				</tr>
+				<tr>
+					<th>Webhook Secret</th>
+					<td><?php echo $brevo_webhook_secret_ready ? '<span style="color:#1d7f2c;">Configured</span>' : '<span style="color:#b32d2e;">Missing (optional)</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></td>
+				</tr>
+				<tr>
+					<th>Subscribe Endpoint</th>
+					<td><code><?php echo esc_html($newsletter_rest_url); ?></code></td>
+				</tr>
+				<tr>
+					<th>Webhook Endpoint</th>
+					<td><code><?php echo esc_html($webhook_rest_url); ?></code></td>
+				</tr>
+			</tbody>
+		</table>
+
+		<h3 style="margin-top: 1.5rem;">Subscriber Status Counts</h3>
+		<?php if (empty($marketing_snapshot['newsletter_table_ready'])) : ?>
+			<p>Newsletter table not detected yet. Deactivate and reactivate the plugin once to create/update tables.</p>
+		<?php elseif (empty($marketing_snapshot['status_counts'])) : ?>
+			<p>No subscriber records yet.</p>
+		<?php else : ?>
+			<table class="widefat striped" style="margin-top: 0.5rem; max-width: 560px;">
+				<thead>
+					<tr>
+						<th>Status</th>
+						<th>Total</th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ($marketing_snapshot['status_counts'] as $status => $count) : ?>
+						<tr>
+							<td><?php echo esc_html((string) $status); ?></td>
+							<td><?php echo (int) $count; ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+
+		<h3 style="margin-top: 1.5rem;">Recent Subscribers</h3>
+		<?php if (empty($marketing_snapshot['recent_subscribers'])) : ?>
+			<p>No recent subscriber updates yet.</p>
+		<?php else : ?>
+			<table class="widefat striped" style="margin-top: 0.5rem;">
+				<thead>
+					<tr>
+						<th>Email</th>
+						<th>Source</th>
+						<th>Customer Type</th>
+						<th>Region</th>
+						<th>Status</th>
+						<th>Updated (UTC)</th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ($marketing_snapshot['recent_subscribers'] as $row) : ?>
+						<tr>
+							<td><?php echo esc_html(isset($row['email']) ? (string) $row['email'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['source']) ? (string) $row['source'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['customer_type']) ? (string) $row['customer_type'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['region']) ? (string) $row['region'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['status']) ? (string) $row['status'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['updated_at']) ? (string) $row['updated_at'] : ''); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+
+		<h3 style="margin-top: 1.5rem;">Recent Marketing Events</h3>
+		<?php if (empty($marketing_snapshot['events_table_ready'])) : ?>
+			<p>Marketing events table not detected yet. Deactivate and reactivate the plugin once to create/update tables.</p>
+		<?php elseif (empty($marketing_snapshot['recent_events'])) : ?>
+			<p>No events tracked yet.</p>
+		<?php else : ?>
+			<table class="widefat striped" style="margin-top: 0.5rem;">
+				<thead>
+					<tr>
+						<th>When (UTC)</th>
+						<th>Event</th>
+						<th>Email</th>
+						<th>Source</th>
+						<th>Customer Type</th>
+						<th>Region</th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ($marketing_snapshot['recent_events'] as $row) : ?>
+						<tr>
+							<td><?php echo esc_html(isset($row['occurred_at']) ? (string) $row['occurred_at'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['event_name']) ? (string) $row['event_name'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['email']) ? (string) $row['email'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['source']) ? (string) $row['source'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['customer_type']) ? (string) $row['customer_type'] : ''); ?></td>
+							<td><?php echo esc_html(isset($row['region']) ? (string) $row['region'] : ''); ?></td>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>
