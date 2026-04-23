@@ -12,7 +12,7 @@ import Ethos from '@/components/Ethos';
 import Journal from '@/components/Journal';
 import Connect from '@/components/Connect';
 import Footer from '@/components/Footer';
-import { getCatalogProducts } from '@/lib/storefront/server';
+import { getCatalogProducts, getStorefrontNavigation } from '@/lib/storefront/server';
 import type { StorefrontCatalogProduct } from '@/lib/storefront/types';
 
 function toFeaturedCard(product: StorefrontCatalogProduct): LandingFeaturedProduct {
@@ -151,9 +151,10 @@ function selectProductsWithFallback(
 }
 
 export default async function Home() {
-  const [catalog, glutanexCatalog] = await Promise.all([
+  const [catalog, glutanexCatalog, navigation] = await Promise.all([
     getCatalogProducts(),
     getCatalogProducts({ brand: 'glutanex' }),
+    getStorefrontNavigation(),
   ]);
   const inStock = catalog.filter((product) => product.inStock !== false);
   const source = inStock.length > 0 ? inStock : catalog;
@@ -187,11 +188,11 @@ export default async function Home() {
         <div className="container d-none d-md-block">
           <div className="border" />
         </div>
-        <Brands />
+        <Brands brands={navigation.brands.slice(0, 6)} />
         <div className="container d-none d-md-block">
           <div className="border" />
         </div>
-        <ShopByConcern />
+        <ShopByConcern concerns={navigation.concerns.slice(0, 6)} />
         <div className="container d-none d-md-block">
           <div className="border" />
         </div>

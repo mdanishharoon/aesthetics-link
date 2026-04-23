@@ -3,51 +3,43 @@
 import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import type { StorefrontNavLink } from "@/lib/storefront/types";
 
-const CONCERNS = [
-  {
-    label: "Brightening",
-    icon: "/images/icon-clean-beyond-reproach.svg",
-    href: "/products?concern=brightening-moisturiser",
-  },
-  {
-    label: "Hydration",
-    icon: "/images/icon-potent-multi-tasking.svg",
-    href: "/products?concern=hydration-serum",
-  },
-  {
-    label: "Anti-Ageing",
-    icon: "/images/icon-real-results.svg",
-    href: "/products?concern=overnight-treatment",
-  },
-  {
-    label: "SPF Protection",
-    icon: "/images/icon-highest-standards.svg",
-    href: "/products?concern=uv-protection",
-  },
-  {
-    label: "Eye Care",
-    icon: "/images/icon-radical-transparency.svg",
-    href: "/products?concern=eye-treatment",
-  },
-  {
-    label: "Targeted Treatment",
-    icon: "/images/icon-conscious-responsible.svg",
-    href: "/products?concern=targeted-treatment",
-  },
+const CONCERN_ICONS = [
+  "/images/icon-clean-beyond-reproach.svg",
+  "/images/icon-potent-multi-tasking.svg",
+  "/images/icon-real-results.svg",
+  "/images/icon-highest-standards.svg",
+  "/images/icon-radical-transparency.svg",
+  "/images/icon-conscious-responsible.svg",
 ] as const;
 
-export default function ShopByConcern() {
+const DEFAULT_CONCERNS: StorefrontNavLink[] = [
+  { label: "Brightening", href: "/products?concern=brightening-moisturiser" },
+  { label: "Hydration", href: "/products?concern=hydration-serum" },
+  { label: "Anti-Ageing", href: "/products?concern=overnight-treatment" },
+  { label: "SPF Protection", href: "/products?concern=uv-protection" },
+  { label: "Eye Care", href: "/products?concern=eye-treatment" },
+  { label: "Targeted Treatment", href: "/products?concern=targeted-treatment" },
+];
+
+export default function ShopByConcern({
+  concerns,
+}: {
+  concerns?: StorefrontNavLink[];
+}) {
+  const concernTiles = (concerns ?? DEFAULT_CONCERNS).slice(0, 6);
+
   return (
     <section id="concerns">
       <div className="container">
         <div className="concerns__header reveal-up" data-reveal>
           <h2 className="concerns__title">
-            Shop by <span className="font-serif">Concern</span>
+            Shop by <span className="font-serif">Target Area</span>
           </h2>
         </div>
         <div className="concerns__grid">
-          {CONCERNS.map((concern, i) => (
+          {concernTiles.map((concern, i) => (
             <Link
               key={concern.href}
               href={concern.href}
@@ -56,7 +48,15 @@ export default function ShopByConcern() {
               style={{ "--stagger": `${i * 0.06}s` } as React.CSSProperties}
             >
               <div className="concerns__tile-icon">
-                <Image src={concern.icon} alt="" aria-hidden="true" width={32} height={32} unoptimized style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <Image
+                  src={CONCERN_ICONS[i % CONCERN_ICONS.length]}
+                  alt=""
+                  aria-hidden="true"
+                  width={32}
+                  height={32}
+                  unoptimized
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
               </div>
               <p className="concerns__tile-label">{concern.label}</p>
               <span className="concerns__tile-cta superscript">

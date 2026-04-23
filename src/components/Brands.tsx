@@ -3,47 +3,95 @@
 import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import type { StorefrontNavLink } from "@/lib/storefront/types";
 
-const BRANDS = [
+const FALLBACK_BRANDS = [
   {
-    name: "Lumière Atelier",
-    category: "Luxury Facial Care",
+    label: "Lumière Atelier",
     image: "/images/ingredients-clip.jpg",
-    href: "/brands/lumiere-atelier",
+    href: "/products?brand=lumiere-atelier",
   },
   {
-    name: "Botan Botanics",
-    category: "Plant-Powered Science",
+    label: "Botan Botanics",
     image: "/images/explore-1.jpg",
-    href: "/brands/botan-botanics",
+    href: "/products?brand=botan-botanics",
   },
   {
-    name: "Clinis Lab",
-    category: "Clinical Actives",
+    label: "Clinis Lab",
     image: "/images/journal-featured.jpg",
-    href: "/brands/clinis-lab",
+    href: "/products?brand=clinis-lab",
   },
   {
-    name: "Velour Skin",
-    category: "Hydration & Barrier",
+    label: "Velour Skin",
     image: "/images/explore-2.jpg",
-    href: "/brands/velour-skin",
+    href: "/products?brand=velour-skin",
   },
   {
-    name: "Verdant",
-    category: "Sustainable Beauty",
+    label: "Verdant",
     image: "/images/journal-2.jpg",
-    href: "/brands/verdant",
+    href: "/products?brand=verdant",
   },
   {
-    name: "Éclat London",
-    category: "Heritage Formulation",
+    label: "Éclat London",
     image: "/images/connect-1.jpg",
-    href: "/brands/eclat-london",
+    href: "/products?brand=eclat-london",
   },
 ] as const;
 
-export default function Brands() {
+const BRAND_IMAGE_FALLBACKS: Record<string, string> = {
+  "glutanex": "/images/explore-1.jpg",
+  "dermapen": "/images/explore-2.jpg",
+  "luna-microcare": "/images/ingredients-clip.jpg",
+};
+
+const BRAND_IMAGE_POOL = [
+  "/images/ingredients-clip.jpg",
+  "/images/explore-1.jpg",
+  "/images/journal-featured.jpg",
+  "/images/explore-2.jpg",
+  "/images/journal-2.jpg",
+  "/images/connect-1.jpg",
+] as const;
+
+function extractBrandSlugFromHref(href: string): string {
+  try {
+    const queryIndex = href.indexOf("?");
+    if (queryIndex === -1) {
+      return "";
+    }
+    const search = href.slice(queryIndex + 1);
+    const params = new URLSearchParams(search);
+    return (params.get("brand") ?? "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function resolveBrandImage(brand: StorefrontNavLink, index: number): string {
+  if (typeof brand.image === "string" && brand.image.trim()) {
+    return brand.image.trim();
+  }
+
+  const slug = extractBrandSlugFromHref(brand.href);
+  if (slug && BRAND_IMAGE_FALLBACKS[slug]) {
+    return BRAND_IMAGE_FALLBACKS[slug];
+  }
+
+  return BRAND_IMAGE_POOL[index % BRAND_IMAGE_POOL.length];
+}
+
+export default function Brands({
+  brands,
+}: {
+  brands?: StorefrontNavLink[];
+}) {
+  const source = brands ?? FALLBACK_BRANDS;
+  const tiles = source.slice(0, 6).map((brand, index) => ({
+    name: brand.label,
+    href: brand.href,
+    image: resolveBrandImage(brand, index),
+  }));
+
   return (
     <section id="brands">
       <div className="container">
@@ -69,7 +117,7 @@ export default function Brands() {
           </Link>
         </div>
         <div className="brands__grid">
-          {BRANDS.map((brand, i) => (
+          {tiles.map((brand, i) => (
             <Link
               key={brand.href}
               href={brand.href}

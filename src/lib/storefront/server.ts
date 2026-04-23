@@ -37,6 +37,7 @@ type WooProductBrand = {
   name?: string;
   slug?: string;
   count?: number;
+  image?: string;
 };
 
 type WooCategory = {
@@ -408,11 +409,39 @@ function normalizeWooTerm(input: unknown): WooProductBrand | null {
         ? Number(term.count)
         : undefined;
 
+  const imageValue = (() => {
+    const image = term.image;
+    if (typeof image === "string") {
+      const src = image.trim();
+      return src || undefined;
+    }
+
+    const imageRecord = asRecord(image);
+    if (!imageRecord) {
+      return undefined;
+    }
+
+    const candidates = [
+      imageRecord.src,
+      imageRecord.thumbnail,
+      imageRecord.url,
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    return undefined;
+  })();
+
   return {
     id: typeof term.id === "number" ? term.id : undefined,
     slug,
     name,
     count,
+    image: imageValue,
   };
 }
 
@@ -829,7 +858,7 @@ export async function getStorefrontNavigation(): Promise<StorefrontNavigation> {
           return [];
         }
 
-        return [{ label: name, href: buildFilterHref("brand", slug) }];
+        return [{ label: name, href: buildFilterHref("brand", slug), image: brand.image ?? null }];
       }) ?? [];
 
     if (brands.length === 0) {

@@ -71,6 +71,7 @@ export type StorefrontCatalogProduct = {
 export type StorefrontNavLink = {
   label: string;
   href: string;
+  image?: string | null;
 };
 
 export type StorefrontNavigation = {
