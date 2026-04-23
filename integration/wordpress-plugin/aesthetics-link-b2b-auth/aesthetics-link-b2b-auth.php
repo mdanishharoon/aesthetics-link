@@ -543,6 +543,16 @@ function al_b2b_normalize_frontend_url($raw_url) {
 }
 
 function al_b2b_get_frontend_base_url() {
+	// Dev override: define AL_B2B_DEV_FRONTEND_URL in wp-config.php to redirect
+	// post-checkout back to a local dev server (e.g. http://localhost:3000).
+	// Never set this on production — comment it out when not actively developing.
+	if (defined('AL_B2B_DEV_FRONTEND_URL') && trim((string) AL_B2B_DEV_FRONTEND_URL)) {
+		$dev = al_b2b_normalize_frontend_url(trim((string) AL_B2B_DEV_FRONTEND_URL));
+		if ($dev) {
+			return $dev;
+		}
+	}
+
 	$defined = defined('AL_B2B_FRONTEND_URL') ? trim((string) AL_B2B_FRONTEND_URL) : '';
 	$base = $defined ? $defined : home_url('/');
 	$filtered = apply_filters('al_b2b_frontend_base_url', $base);
