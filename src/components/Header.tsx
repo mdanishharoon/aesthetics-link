@@ -243,11 +243,11 @@ export default function Header({ darkLogo = false, forceScrolled = false }: { da
 
               <li className="navbar-menu-list-item navbar-menu-list-item--mobile-account">
                 <Link
-                  href={user ? "/profile" : "/login"}
+                  href="/profile"
                   className="navbar-link-text link"
                   onClick={closeAll}
                 >
-                  {user ? "Account" : "Sign in"}
+                  Account
                 </Link>
               </li>
             </ul>
@@ -324,9 +324,9 @@ export default function Header({ darkLogo = false, forceScrolled = false }: { da
               <li role="separator" aria-hidden="true" className="border-vertical d-none d-md-block" />
               <li className="navbar-menu-list-item navbar-cta-account">
                 <Link
-                  href={user ? "/profile" : "/login"}
+                  href="/profile"
                   className="navbar-menu-list-item-link"
-                  aria-label={user ? "My account" : "Sign in"}
+                  aria-label="My account"
                   style={{ position: "relative" }}
                 >
                   <svg

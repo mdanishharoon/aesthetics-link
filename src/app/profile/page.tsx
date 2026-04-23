@@ -169,9 +169,6 @@ function OrdersEmptyState() {
         <Link href="/products" className="profile-dashboard__button">
           Start shopping
         </Link>
-        <Link href="/order-lookup" className="profile-dashboard__button profile-dashboard__button--secondary">
-          Find guest order
-        </Link>
       </div>
     </div>
   );
@@ -731,9 +728,6 @@ function ProfileDashboard() {
               <nav className="profile-nav-strip" aria-label="Account navigation">
                 <Link href="/cart" className="profile-nav-strip__link">
                   View Bag
-                </Link>
-                <Link href="/order-lookup" className="profile-nav-strip__link">
-                  Order Lookup
                 </Link>
                 <Link href="/forgot-password" className="profile-nav-strip__link">
                   Reset Password
