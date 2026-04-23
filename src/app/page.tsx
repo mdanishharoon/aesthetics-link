@@ -151,13 +151,17 @@ function selectProductsWithFallback(
 }
 
 export default async function Home() {
-  const catalog = await getCatalogProducts();
+  const [catalog, glutanexCatalog] = await Promise.all([
+    getCatalogProducts(),
+    getCatalogProducts({ brand: 'glutanex' }),
+  ]);
   const inStock = catalog.filter((product) => product.inStock !== false);
   const source = inStock.length > 0 ? inStock : catalog;
+  const glutanexInStock = glutanexCatalog.filter((product) => product.inStock !== false);
+  const glutanexSource = glutanexInStock.length > 0 ? glutanexInStock : glutanexCatalog;
   const featuredSource = selectProductsWithFallback(source, source, 6);
 
-  const glutanexOnly = filterProductsByBrands(source, ['glutanex']);
-  const bestsellersSource = selectProductsWithFallback(glutanexOnly, source, 6);
+  const bestsellersSource = repeatProducts(glutanexSource, 6);
 
   const bestSellerSlugs = new Set(bestsellersSource.map((product) => product.slug));
   const dermapenAndGlutanex = filterProductsByBrands(source, ['dermapen', 'glutanex']);
