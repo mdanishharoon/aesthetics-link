@@ -709,7 +709,7 @@ function toCategoryDescendantLinks(
       return true;
     })
     .map((category) => ({
-      label: category.name,
+      label: normalizeWhitespace(decodeEntities(category.name)),
       href: buildFilterHref(key, category.slug),
     }));
 }
@@ -876,7 +876,7 @@ export async function getStorefrontNavigation(): Promise<StorefrontNavigation> {
             isPositiveOrUnknownCount(category.count),
         )
         .map((category) => ({
-          label: category.name,
+          label: normalizeWhitespace(decodeEntities(category.name)),
           href: buildFilterHref("brand", category.slug),
         }));
     }
