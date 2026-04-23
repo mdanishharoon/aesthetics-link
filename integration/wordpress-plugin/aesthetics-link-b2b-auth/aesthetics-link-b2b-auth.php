@@ -512,11 +512,51 @@ function al_b2b_assert_captcha($payload) {
 	return true;
 }
 
+function al_b2b_normalize_frontend_url($raw_url) {
+	$url = trim((string) $raw_url);
+	if ($url === '') {
+		return '';
+	}
+
+	// Guard against common typo observed in production config values.
+	if (stripos($url, 'htthttps://') === 0) {
+		$url = 'https://' . substr($url, strlen('htthttps://'));
+	}
+
+	$parsed = wp_parse_url($url);
+	if (!is_array($parsed) || empty($parsed['host'])) {
+		return '';
+	}
+
+	$scheme = isset($parsed['scheme']) ? strtolower((string) $parsed['scheme']) : '';
+	if ($scheme !== 'http' && $scheme !== 'https') {
+		return '';
+	}
+
+	$normalized = $scheme . '://' . $parsed['host'];
+	if (!empty($parsed['port'])) {
+		$normalized .= ':' . (int) $parsed['port'];
+	}
+	if (!empty($parsed['path'])) {
+		$normalized .= '/' . ltrim((string) $parsed['path'], '/');
+	}
+
+	return untrailingslashit($normalized);
+}
+
 function al_b2b_get_frontend_base_url() {
 	$defined = defined('AL_B2B_FRONTEND_URL') ? trim((string) AL_B2B_FRONTEND_URL) : '';
 	$base = $defined ? $defined : home_url('/');
+	$filtered = apply_filters('al_b2b_frontend_base_url', $base);
+	$normalized = al_b2b_normalize_frontend_url($filtered);
 
-	return untrailingslashit(apply_filters('al_b2b_frontend_base_url', $base));
+	// If an explicit frontend URL was configured but invalid, fail closed so we do not
+	// redirect users to malformed protocols like "htthttps://...".
+	if (!$normalized && $defined !== '') {
+		return '';
+	}
+
+	return $normalized;
 }
 
 function al_b2b_allow_frontend_redirect_host(array $hosts): array {
@@ -1828,9 +1868,28 @@ function al_b2b_execute_checkout_bridge($encoded_payload, $signature) {
 
 		// Log the user into WordPress so they arrive at checkout already authenticated.
 		// For guests (no userId), WooCommerce guest checkout handles the session.
+		//
+		// Important safety: if an administrator is already logged in on this domain in
+		// the same browser session, do not overwrite that admin auth cookie with a
+		// customer account during bridge redirect.
 		if ($bridge_user_id > 0) {
-			wp_set_current_user($bridge_user_id);
-			wp_set_auth_cookie($bridge_user_id, false);
+			$current_user_id = (int) get_current_user_id();
+			$current_user = $current_user_id > 0 ? get_user_by('id', $current_user_id) : null;
+			$should_preserve_admin_session =
+				$current_user &&
+				isset($current_user->ID) &&
+				(int) $current_user->ID !== (int) $bridge_user_id &&
+				user_can($current_user, 'manage_options');
+
+			if ($should_preserve_admin_session) {
+				al_b2b_log_checkout_bridge_error('Checkout bridge preserved existing admin auth session.', array(
+					'admin_user_id' => (int) $current_user->ID,
+					'bridge_user_id' => (int) $bridge_user_id,
+				));
+			} else {
+				wp_set_current_user($bridge_user_id);
+				wp_set_auth_cookie($bridge_user_id, false);
+			}
 		}
 
 		wp_safe_redirect($checkout_url);
