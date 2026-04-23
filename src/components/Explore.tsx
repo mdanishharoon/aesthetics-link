@@ -367,8 +367,8 @@ export default function Explore({
 }) {
   const img1Ref = useParallax<HTMLImageElement>(0.12);
   const img2Ref = useParallax<HTMLImageElement>(0.12);
-  const bestSellerProducts = bestsellers && bestsellers.length > 0 ? bestsellers : pureBrillianceProducts;
-  const newArrivalProducts = newArrivals && newArrivals.length > 0 ? newArrivals : refinedBlendsProducts;
+  const bestSellerProducts = bestsellers ?? pureBrillianceProducts;
+  const newArrivalProducts = newArrivals ?? refinedBlendsProducts;
 
   return (
     <section id="explore" style={{ position: "relative", margin: 0 }}>

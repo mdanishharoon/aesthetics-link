@@ -161,7 +161,7 @@ export default async function Home() {
   const glutanexSource = glutanexInStock.length > 0 ? glutanexInStock : glutanexCatalog;
   const featuredSource = selectProductsWithFallback(source, source, 6);
 
-  const bestsellersSource = repeatProducts(glutanexSource, 6);
+  const bestsellersSource = glutanexSource;
 
   const bestSellerSlugs = new Set(bestsellersSource.map((product) => product.slug));
   const dermapenAndGlutanex = filterProductsByBrands(source, ['dermapen', 'glutanex']);
