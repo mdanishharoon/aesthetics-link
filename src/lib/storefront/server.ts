@@ -848,7 +848,7 @@ export async function getStorefrontNavigation(): Promise<StorefrontNavigation> {
     let concerns = toCategoryDescendantLinks(categories, concernRootIds, "concern", {
       leavesOnly: true,
     });
-    let brands =
+    let brands: StorefrontNavLink[] =
       storeBrands?.flatMap((brand) => {
         const slug = typeof brand.slug === "string" ? brand.slug.trim() : "";
         const name =
