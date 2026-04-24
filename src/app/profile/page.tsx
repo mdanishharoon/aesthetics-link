@@ -18,6 +18,7 @@ import type {
   UpdateProfilePayload,
 } from "@/lib/auth/types";
 import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
+import styles from "./ProfilePage.module.css";
 
 const ORDER_FETCH_LIMIT = 12;
 const EMPTY_ORDERS: AuthOrderSummary[] = [];
@@ -130,26 +131,37 @@ function buildOrderPreview(order: AuthOrderSummary): string {
   return parts.join(" • ");
 }
 
-function ProfileBanner({ children }: { children: ReactNode }) {
-  return <div className="profile-dashboard__banner">{children}</div>;
+function toneClassName(tone: string): string {
+  if (tone === "complete" || tone === "approved") return styles.isComplete;
+  if (tone === "active") return styles.isActive;
+  if (tone === "inactive" || tone === "rejected") return styles.isInactive;
+  return styles.isPending;
+}
+
+function clinicClassName(status: string | null | undefined): string {
+  if (status === "approved") return styles.isApproved;
+  if (status === "rejected") return styles.isRejected;
+  return styles.isPending;
+}
+
+function ProfileBanner({ children, error = false }: { children: ReactNode; error?: boolean }) {
+  return <div className={error ? styles.bannerError : styles.banner}>{children}</div>;
 }
 
 function SignedOutState({ error }: { error: string | null }) {
   return (
-    <section className="profile-dashboard__auth">
-      <div className="profile-dashboard__eyebrow">Account Access</div>
-      <h2 className="profile-dashboard__section-title">Sign in to review your account and orders.</h2>
-      <p className="profile-dashboard__copy">
-        {error ?? "This area is available to signed-in customers only."}
-      </p>
-      <div className="profile-dashboard__action-row">
-        <Link href="/login" className="profile-dashboard__button">
+    <section className={styles.guestCard}>
+      <div className={styles.eyebrow}>Account access</div>
+      <h2 className={styles.sectionTitle}>Sign in to review your account and orders.</h2>
+      <p className={styles.copy}>{error ?? "This area is available to signed-in customers only."}</p>
+      <div className={styles.actionRow}>
+        <Link href="/login" className={styles.button}>
           Log in
         </Link>
-        <Link href="/signup" className="profile-dashboard__button profile-dashboard__button--secondary">
+        <Link href="/signup" className={styles.buttonSecondary}>
           Create account
         </Link>
-        <Link href="/order-lookup" className="profile-dashboard__button profile-dashboard__button--secondary">
+        <Link href="/order-lookup" className={styles.buttonSecondary}>
           Find guest order
         </Link>
       </div>
@@ -159,14 +171,14 @@ function SignedOutState({ error }: { error: string | null }) {
 
 function OrdersEmptyState() {
   return (
-    <div className="profile-orders__empty">
-      <div className="profile-dashboard__eyebrow">Orders</div>
-      <h3 className="profile-dashboard__section-title">No orders recorded yet.</h3>
-      <p className="profile-dashboard__copy">
+    <div className={styles.empty}>
+      <div className={styles.eyebrow}>Orders</div>
+      <h3 className={styles.sectionTitle}>No orders recorded yet.</h3>
+      <p className={styles.copy}>
         Once you place an order, it will appear here with status, totals, and access to the formal receipt.
       </p>
-      <div className="profile-dashboard__action-row">
-        <Link href="/products" className="profile-dashboard__button">
+      <div className={styles.actionRow}>
+        <Link href="/products" className={styles.button}>
           Start shopping
         </Link>
       </div>
@@ -176,11 +188,11 @@ function OrdersEmptyState() {
 
 function OrdersErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="profile-orders__empty">
-      <div className="profile-dashboard__eyebrow">Orders</div>
-      <h3 className="profile-dashboard__section-title">Orders could not be loaded.</h3>
-      <p className="profile-dashboard__copy">{message}</p>
-      <button type="button" className="profile-dashboard__button" onClick={onRetry}>
+    <div className={styles.empty}>
+      <div className={styles.eyebrow}>Orders</div>
+      <h3 className={styles.sectionTitle}>Orders could not be loaded.</h3>
+      <p className={styles.copy}>{message}</p>
+      <button type="button" className={styles.button} onClick={onRetry}>
         Retry
       </button>
     </div>
@@ -196,9 +208,9 @@ function OrderAddressBlock({
 }) {
   const lines = address.lines.filter(Boolean);
   return (
-    <section className="profile-order-detail__address">
-      <div className="profile-dashboard__eyebrow">{label}</div>
-      {address.name ? <p className="profile-order-detail__address-name">{address.name}</p> : null}
+    <section className={styles.detailAddress}>
+      <div className={styles.eyebrow}>{label}</div>
+      {address.name ? <p className={styles.addressName}>{address.name}</p> : null}
       {lines.map((line) => (
         <p key={`${label}:${line}`}>{line}</p>
       ))}
@@ -222,35 +234,36 @@ function OrderDetailPanel({
   onRetry: () => void;
 }) {
   return (
-    <section className="profile-order-detail">
-      <div className="profile-order-detail__header">
+    <section className={styles.orderDetail}>
+      <div className={styles.detailHeader}>
         <div>
-          <div className="profile-dashboard__eyebrow">Selected order</div>
-          <h3 className="profile-dashboard__section-title">Order detail</h3>
+          <div className={styles.eyebrow}>Selected order</div>
+          <h3 className={styles.sectionTitle}>Order detail</h3>
         </div>
         {summary?.hasReceipt ? (
           <Link
             href={`/api/orders/receipt?receipt=${encodeURIComponent(summary.receiptToken)}`}
-            className="profile-dashboard__button profile-dashboard__button--secondary"
+            className={styles.buttonSecondary}
           >
             Open receipt
           </Link>
         ) : null}
       </div>
 
-      {loading ? <p className="profile-orders__loading">Loading order detail...</p> : null}
+      {loading ? <p className={styles.ordersLoading}>Loading order detail...</p> : null}
+
       {!loading && error ? (
-        <div className="profile-orders__empty">
-          <p className="profile-dashboard__copy">{error}</p>
-          <button type="button" className="profile-dashboard__button" onClick={onRetry}>
+        <div className={styles.empty}>
+          <p className={styles.copy}>{error}</p>
+          <button type="button" className={styles.button} onClick={onRetry}>
             Retry detail
           </button>
         </div>
       ) : null}
 
       {!loading && !error && order ? (
-        <div className="profile-order-detail__content">
-          <div className="profile-order-detail__meta">
+        <div className={styles.detailContent}>
+          <div className={styles.detailMeta}>
             <div>
               <span>Order</span>
               <strong>#{order.orderNumber}</strong>
@@ -269,26 +282,24 @@ function OrderDetailPanel({
             </div>
           </div>
 
-          <div className="profile-order-detail__items">
+          <div className={styles.detailItems}>
             {order.items.map((item) => (
-              <article key={`${item.id}:${item.variationId}:${item.name}`} className="profile-order-detail__item">
+              <article key={`${item.id}:${item.variationId}:${item.name}`} className={styles.detailItem}>
                 <div>
-                  <strong>{item.name}</strong>
-                  <p>
+                  <p className={styles.detailItemName}>{item.name}</p>
+                  <p className={styles.detailItemMeta}>
                     Qty {item.quantity}
                     {item.sku ? ` • SKU ${item.sku}` : ""}
+                    {item.meta.length > 0 ? ` • ${item.meta.map((meta) => `${meta.label}: ${meta.value}`).join(" • ")}` : ""}
                   </p>
-                  {item.meta.length > 0 ? (
-                    <p>{item.meta.map((meta) => `${meta.label}: ${meta.value}`).join(" • ")}</p>
-                  ) : null}
                 </div>
                 <strong>{item.lineTotal}</strong>
               </article>
             ))}
           </div>
 
-          <div className="profile-order-detail__footer">
-            <div className="profile-order-detail__addresses">
+          <div className={styles.detailFooter}>
+            <div className={styles.detailAddresses}>
               <OrderAddressBlock
                 label="Delivery address"
                 address={order.shippingAddress.lines.length > 0 ? order.shippingAddress : order.billingAddress}
@@ -296,7 +307,7 @@ function OrderDetailPanel({
               <OrderAddressBlock label="Billing address" address={order.billingAddress} />
             </div>
 
-            <div className="profile-order-detail__totals">
+            <div className={styles.detailTotals}>
               <div>
                 <span>Subtotal</span>
                 <strong>{order.totals.subtotal}</strong>
@@ -309,7 +320,7 @@ function OrderDetailPanel({
                 <span>Tax</span>
                 <strong>{order.totals.tax}</strong>
               </div>
-              <div className="profile-order-detail__grand-total">
+              <div className={styles.grandTotal}>
                 <span>Total</span>
                 <strong>{order.totals.total}</strong>
               </div>
@@ -341,84 +352,89 @@ function AccountSettingsSection({
   onSubmit: () => void;
 }) {
   return (
-    <section className="profile-settings">
-      <div className="profile-settings__header">
+    <section className={styles.settings}>
+      <div className={styles.settingsHeader}>
         <div>
-          <div className="profile-dashboard__eyebrow">Account settings</div>
-          <h2 className="profile-dashboard__section-title">Name and contact details</h2>
+          <div className={styles.eyebrow}>Account settings</div>
+          <h2 className={styles.sectionTitle}>Name and contact details</h2>
         </div>
-        <button type="button" className="profile-dashboard__button" onClick={onSubmit} disabled={busy}>
-          {busy ? "Saving..." : "Save"}
+        <button type="button" className={styles.button} onClick={onSubmit} disabled={busy}>
+          {busy ? "Saving..." : "Save changes"}
         </button>
       </div>
 
-      {message ? <div className="profile-dashboard__banner">{message}</div> : null}
-      {error ? <div className="profile-dashboard__banner profile-dashboard__banner--error">{error}</div> : null}
+      {(message || error) ? (
+        <div className={styles.settingsState}>
+          {message ? <ProfileBanner>{message}</ProfileBanner> : null}
+          {error ? <ProfileBanner error>{error}</ProfileBanner> : null}
+        </div>
+      ) : null}
 
-      <div className="profile-settings__fields profile-settings__fields--flat">
-        <label className="profile-settings__field">
+      <div className={styles.fieldGridWide}>
+        <label className={styles.field}>
           <span>First name</span>
           <input value={form.firstName} onChange={(event) => onFieldChange("firstName", event.target.value)} />
         </label>
-        <label className="profile-settings__field">
+        <label className={styles.field}>
           <span>Last name</span>
           <input value={form.lastName} onChange={(event) => onFieldChange("lastName", event.target.value)} />
         </label>
-        <label className="profile-settings__field profile-settings__field--wide">
+        <label className={`${styles.field} ${styles.fieldWide}`}>
           <span>Display name</span>
           <input value={form.displayName} onChange={(event) => onFieldChange("displayName", event.target.value)} />
         </label>
-        <label className="profile-settings__field profile-settings__field--wide">
+        <label className={`${styles.field} ${styles.fieldWide}`}>
           <span>Account email</span>
           <input value={user.email} disabled readOnly />
         </label>
       </div>
 
       {user.accountType === "clinic" ? (
-        <div className="profile-settings__business">
-          <div className="profile-dashboard__eyebrow">Business information</div>
-          <div className="profile-settings__fields profile-settings__fields--flat">
-            <label className="profile-settings__field">
+        <div className={styles.businessSection}>
+          <div>
+            <div className={styles.eyebrow}>Business information</div>
+            <p className={styles.copy}>Refine the details attached to your approved professional account.</p>
+          </div>
+
+          <div className={styles.fieldGrid}>
+            <label className={styles.field}>
               <span>Clinic name</span>
               <input
                 value={form.businessInfo.clinicName ?? ""}
                 onChange={(event) => onBusinessFieldChange("clinicName", event.target.value)}
               />
             </label>
-            <label className="profile-settings__field">
+            <label className={styles.field}>
               <span>Business name</span>
               <input
                 value={form.businessInfo.businessName ?? ""}
                 onChange={(event) => onBusinessFieldChange("businessName", event.target.value)}
               />
             </label>
-            <label className="profile-settings__field">
+            <label className={styles.field}>
               <span>Business phone</span>
               <input
                 value={form.businessInfo.phone ?? ""}
                 onChange={(event) => onBusinessFieldChange("phone", event.target.value)}
               />
             </label>
-            <label className="profile-settings__field">
+            <label className={styles.field}>
               <span>Website</span>
               <input
                 value={form.businessInfo.website ?? ""}
                 onChange={(event) => onBusinessFieldChange("website", event.target.value)}
               />
             </label>
-            <label className="profile-settings__field">
+            <label className={styles.field}>
               <span>License number</span>
               <input
                 value={form.businessInfo.licenseNumber ?? ""}
                 onChange={(event) => onBusinessFieldChange("licenseNumber", event.target.value)}
               />
             </label>
-            <label className="profile-settings__field">
+            <label className={styles.field}>
               <span>Tax ID</span>
-              <input
-                value={form.businessInfo.taxId ?? ""}
-                onChange={(event) => onBusinessFieldChange("taxId", event.target.value)}
-              />
+              <input value={form.businessInfo.taxId ?? ""} onChange={(event) => onBusinessFieldChange("taxId", event.target.value)} />
             </label>
           </div>
         </div>
@@ -445,92 +461,73 @@ function OrdersSection({
   const latestOrder = orders[0];
 
   return (
-    <section className="profile-orders" aria-labelledby="profile-orders-title">
-      <div className="profile-orders__header">
+    <section className={styles.orders} aria-labelledby="profile-orders-title">
+      <div className={styles.ordersHeader}>
         <div>
-          <div className="profile-dashboard__eyebrow">Orders</div>
-          <h2 id="profile-orders-title" className="profile-dashboard__section-title">
+          <div className={styles.eyebrow}>Orders</div>
+          <h2 id="profile-orders-title" className={styles.sectionTitle}>
             Order history and receipts
           </h2>
         </div>
-        <div className="profile-orders__summary">
+        <div className={styles.ordersSummary}>
           <span>{orders.length} shown</span>
           <strong>{latestOrder ? `Latest: ${latestOrder.createdAt}` : "No orders yet"}</strong>
         </div>
       </div>
 
       {loading ? (
-        <div className="profile-orders__loading">Loading your recent orders...</div>
+        <div className={styles.ordersLoading}>Loading your recent orders...</div>
       ) : error ? (
         <OrdersErrorState message={error} onRetry={onRetry} />
       ) : orders.length === 0 ? (
         <OrdersEmptyState />
       ) : (
-        <div className="profile-orders__table" role="table" aria-label="Recent orders">
-          <div className="profile-orders__head" role="row">
-            <span role="columnheader">Order</span>
-            <span role="columnheader">Placed</span>
-            <span role="columnheader">Status</span>
-            <span role="columnheader">Total</span>
-            <span role="columnheader">Actions</span>
-          </div>
+        <div className={styles.ordersList}>
+          {orders.map((order) => {
+            const tone = getOrderStatusTone(order.status);
+            const selected = selectedOrderId === order.orderId;
+            return (
+              <article
+                key={order.orderId}
+                className={`${styles.orderCard} ${selected ? styles.orderCardSelected : ""}`.trim()}
+              >
+                <div className={styles.orderPrimary}>
+                  <div className={styles.orderNumber}>Order #{order.orderNumber}</div>
+                  <p className={styles.orderPreview}>{buildOrderPreview(order)}</p>
+                  {order.paymentMethod ? <p className={styles.orderMeta}>{order.paymentMethod}</p> : null}
+                </div>
 
-          <div className="profile-orders__body">
-            {orders.map((order) => {
-              const tone = getOrderStatusTone(order.status);
-              const selected = selectedOrderId === order.orderId;
-              return (
-                <article
-                  key={order.orderId}
-                  className={`profile-orders__row${selected ? " is-selected" : ""}`}
-                  role="row"
-                >
-                  <div className="profile-orders__primary" role="cell">
-                    <div className="profile-orders__order-number">Order #{order.orderNumber}</div>
-                    <p className="profile-orders__preview">{buildOrderPreview(order)}</p>
-                    {order.paymentMethod ? (
-                      <p className="profile-orders__meta">{order.paymentMethod}</p>
-                    ) : null}
-                  </div>
+                <div className={styles.orderSecondary}>
+                  <span className={styles.orderMobileLabel}>Placed</span>
+                  <strong>{order.createdAt}</strong>
+                </div>
 
-                  <div className="profile-orders__secondary" role="cell">
-                    <span className="profile-orders__mobile-label">Placed</span>
-                    <strong>{order.createdAt}</strong>
-                  </div>
+                <div className={styles.orderSecondary}>
+                  <span className={styles.orderMobileLabel}>Status</span>
+                  <span className={`${styles.orderStatus} ${toneClassName(tone)}`.trim()}>{order.statusLabel}</span>
+                </div>
 
-                  <div className="profile-orders__secondary" role="cell">
-                    <span className="profile-orders__mobile-label">Status</span>
-                    <span className={`profile-orders__status profile-orders__status--${tone}`}>
-                      {order.statusLabel}
-                    </span>
-                  </div>
+                <div className={styles.orderSecondary}>
+                  <span className={styles.orderMobileLabel}>Total</span>
+                  <strong>{order.total}</strong>
+                </div>
 
-                  <div className="profile-orders__secondary" role="cell">
-                    <span className="profile-orders__mobile-label">Total</span>
-                    <strong>{order.total}</strong>
-                  </div>
-
-                  <div className="profile-orders__actions" role="cell">
-                    <button
-                      type="button"
-                      className="profile-dashboard__button profile-dashboard__button--secondary"
-                      onClick={() => onSelectOrder(order.orderId)}
+                <div className={styles.orderActions}>
+                  <button type="button" className={styles.buttonSecondary} onClick={() => onSelectOrder(order.orderId)}>
+                    {selected ? "Viewing" : "View detail"}
+                  </button>
+                  {order.hasReceipt ? (
+                    <Link
+                      href={`/api/orders/receipt?receipt=${encodeURIComponent(order.receiptToken)}`}
+                      className={styles.buttonSecondary}
                     >
-                      {selected ? "Viewing" : "View details"}
-                    </button>
-                    {order.hasReceipt ? (
-                      <Link
-                        href={`/api/orders/receipt?receipt=${encodeURIComponent(order.receiptToken)}`}
-                        className="profile-dashboard__button profile-dashboard__button--secondary"
-                      >
-                        Receipt
-                      </Link>
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                      Receipt
+                    </Link>
+                  ) : null}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
@@ -595,7 +592,6 @@ function ProfileDashboard() {
           ? { ...current, user: response.user }
           : { user: response.user, orders: [], total: 0, initialOrderDetail: null },
       );
-      // Keep the global AuthProvider cache in sync so Header reflects changes immediately.
       queryClient.setQueryData<AuthUser | null>(["auth", "me"], response.user);
       setForm(toSettingsState(response.user));
       setSettingsError(null);
@@ -645,13 +641,13 @@ function ProfileDashboard() {
   const selectedOrderSummary = orders.find((order) => order.orderId === effectiveSelectedOrderId) ?? null;
 
   return (
-    <div className="auth-page shop-page profile-page">
+    <div className={styles.page}>
       <MotionProvider />
-      <Header />
+      <Header darkLogo forceScrolled />
 
-      <main className="container profile-main">
-        <div className="profile-dashboard">
-          {bootLoading ? <p className="profile-dashboard__loading">Loading account dashboard...</p> : null}
+      <main className={`container ${styles.main}`}>
+        <div className={styles.dashboard}>
+          {bootLoading ? <p className={styles.loading}>Loading account dashboard...</p> : null}
 
           {!bootLoading && state === "signup-success" ? (
             <ProfileBanner>Account created successfully. Your dashboard is ready whenever you want to continue.</ProfileBanner>
@@ -661,31 +657,28 @@ function ProfileDashboard() {
             <ProfileBanner>Business application received. Approval updates will appear in your account status.</ProfileBanner>
           ) : null}
 
-          {!bootLoading && user && pageError ? (
-            <div className="profile-dashboard__banner profile-dashboard__banner--error">{pageError}</div>
-          ) : null}
+          {!bootLoading && user && pageError ? <ProfileBanner error>{pageError}</ProfileBanner> : null}
 
           {!bootLoading && !user ? <SignedOutState error={pageError ?? dashboardError} /> : null}
 
           {user ? (
             <>
-              <header className="profile-hero">
-                <div className="profile-hero__identity">
-                  <div className="profile-identity__mark" aria-hidden="true">
+              <header className={styles.hero}>
+                <div className={styles.identity}>
+                  <div className={styles.mark} aria-hidden="true">
                     {(user.firstName?.[0] ?? "").toUpperCase()}
                     {(user.lastName?.[0] ?? "").toUpperCase()}
                   </div>
-                  <div className="profile-hero__meta">
-                    <span className="profile-dashboard__eyebrow">Account holder</span>
-                    <h1 className="profile-hero__name">
+
+                  <div className={styles.heroMeta}>
+                    <span className={styles.eyebrow}>Account holder</span>
+                    <h1 className={styles.heroName}>
                       {user.displayName || `${user.firstName} ${user.lastName}`.trim() || "Customer"}
                     </h1>
-                    <div className="profile-hero__badges">
-                      <span className="profile-hero__badge">{memberLabel}</span>
+                    <div className={styles.heroBadges}>
+                      <span className={styles.accountPill}>{memberLabel}</span>
                       {user.accountType === "clinic" ? (
-                        <span
-                          className={`profile-hero__badge profile-hero__badge--status profile-hero__badge--${user.clinicStatus ?? "pending"}`}
-                        >
+                        <span className={`${styles.badgeStatus} ${clinicClassName(user.clinicStatus)}`.trim()}>
                           {user.clinicStatus === "approved"
                             ? "Approved"
                             : user.clinicStatus === "rejected"
@@ -694,47 +687,52 @@ function ProfileDashboard() {
                         </span>
                       ) : null}
                     </div>
-                    <p className="profile-hero__email">{user.email}</p>
+                    <p className={styles.heroEmail}>{user.email}</p>
                   </div>
                 </div>
 
-                <div className="profile-hero__actions">
-                  <Link href="/products" className="profile-dashboard__button">
-                    Continue shopping
-                  </Link>
-                  <button
-                    type="button"
-                    className="profile-dashboard__button profile-dashboard__button--secondary"
-                    onClick={() => logoutMutation.mutate()}
-                    disabled={logoutMutation.isPending}
-                  >
-                    {logoutMutation.isPending ? "Signing out..." : "Log out"}
-                  </button>
+                <div className={styles.heroAside}>
+                  <p className={styles.heroBlurb}>
+                    Review recent orders, open formal receipts, and keep your account details aligned with your next purchase.
+                  </p>
+                  <div className={styles.heroActions}>
+                    <Link href="/products" className={styles.button}>
+                      Continue shopping
+                    </Link>
+                    <button
+                      type="button"
+                      className={styles.buttonSecondary}
+                      onClick={() => logoutMutation.mutate()}
+                      disabled={logoutMutation.isPending}
+                    >
+                      {logoutMutation.isPending ? "Signing out..." : "Log out"}
+                    </button>
+                  </div>
                 </div>
               </header>
 
               {clinicMessage ? (
-                <div className={`profile-clinic-notice profile-clinic-notice--${user.clinicStatus ?? "pending"}`}>
-                  <span className="profile-dashboard__eyebrow">Business account</span>
+                <div className={`${styles.clinicNotice} ${clinicClassName(user.clinicStatus)}`.trim()}>
+                  <span className={styles.eyebrow}>Business account</span>
                   <p>{clinicMessage}</p>
                   {user.businessInfo?.businessName || user.businessInfo?.clinicName ? (
-                    <p className="profile-clinic-notice__sub">
+                    <p className={styles.clinicNoticeSub}>
                       Registered as {user.businessInfo.businessName || user.businessInfo.clinicName}.
                     </p>
                   ) : null}
                 </div>
               ) : null}
 
-              <nav className="profile-nav-strip" aria-label="Account navigation">
-                <Link href="/cart" className="profile-nav-strip__link">
-                  View Bag
+              <nav className={styles.statusStrip} aria-label="Account navigation">
+                <Link href="/cart" className={styles.statusStripLink}>
+                  View bag
                 </Link>
-                <Link href="/forgot-password" className="profile-nav-strip__link">
-                  Reset Password
+                <Link href="/forgot-password" className={styles.statusStripLink}>
+                  Reset password
                 </Link>
               </nav>
 
-              <div className="profile-content">
+              <div className={styles.content}>
                 <OrdersSection
                   orders={orders}
                   loading={dashboardQuery.isPending}
@@ -777,9 +775,9 @@ export default function ProfilePage() {
   return (
     <Suspense
       fallback={
-        <div className="auth-page shop-page profile-page">
-          <main className="container profile-main">
-            <p className="profile-dashboard__loading profile-dashboard__loading--shell">Loading account dashboard...</p>
+        <div className={styles.page}>
+          <main className={`container ${styles.main}`}>
+            <p className={`${styles.loading} ${styles.loadingShell}`}>Loading account dashboard...</p>
           </main>
         </div>
       }

@@ -1,0 +1,167 @@
+.section {
+  margin: clamp(4rem, 9vw, 9rem) 0 0;
+  overflow: visible;
+  padding-bottom: clamp(1.5rem, 4vw, 3rem);
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(8rem, 18rem) minmax(0, 1fr) minmax(8rem, 18rem);
+  gap: clamp(1rem, 2vw, 2rem);
+  align-items: start;
+  width: min(100%, 92rem);
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 2vw, 2rem);
+}
+
+.intro,
+.outro {
+  display: flex;
+  min-height: 100%;
+}
+
+.intro {
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-top: clamp(4.5rem, 8vw, 7rem);
+}
+
+.outro {
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding-bottom: clamp(0rem, 4vw, 3rem);
+}
+
+.thumbTop,
+.thumbBottom {
+  position: relative;
+  overflow: hidden;
+  background: oklch(0.95 0.02 40);
+}
+
+.thumbTop {
+  width: min(100%, 20rem);
+  aspect-ratio: 0.9;
+}
+
+.thumbBottom {
+  width: min(100%, 18rem);
+  aspect-ratio: 0.82;
+}
+
+.thumbTop img,
+.thumbBottom img,
+.mainImage img {
+  object-fit: cover;
+}
+
+.copy {
+  max-width: 15ch;
+  margin: 0;
+  color: var(--color-gray2);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.feature {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding-top: clamp(1rem, 2vw, 1.75rem);
+}
+
+.title {
+  position: relative;
+  z-index: 2;
+  margin: 0 0 clamp(-1rem, -1vw, -0.25rem);
+  color: var(--color-text);
+  font-family: "PP Mori", system-ui, sans-serif;
+  font-size: clamp(3rem, 7vw, 5.5rem);
+  font-weight: 600;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-align: center;
+}
+
+.mainImage {
+  position: relative;
+  display: block;
+  width: min(100%, 57rem);
+  aspect-ratio: 1.08;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.scriptLabel {
+  position: relative;
+  z-index: 2;
+  margin: clamp(-0.85rem, -1vw, 0rem) 0 0;
+  color: var(--color-text);
+  font-family: "Editorial New", Georgia, serif;
+  font-size: clamp(3.5rem, 8vw, 6.4rem);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 0.78;
+  padding-bottom: 0.14em;
+  text-align: center;
+}
+
+.cta {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  padding: 0.9rem 1.8rem;
+  border: 1px solid var(--color-text);
+  border-radius: 999px;
+  color: var(--color-text);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.cta:hover {
+  background: var(--color-text);
+  color: #fff;
+}
+
+@media (max-width: 991.98px) {
+  .shell {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .intro,
+  .outro {
+    display: none;
+  }
+
+  .feature {
+    padding-top: 0;
+  }
+
+  .title {
+    margin-bottom: -0.4rem;
+  }
+
+  .mainImage {
+    width: 100%;
+    aspect-ratio: 0.88;
+  }
+
+  .scriptLabel {
+    margin-top: 0.15rem;
+  }
+
+  .cta {
+    margin-top: 0.85rem;
+  }
+}

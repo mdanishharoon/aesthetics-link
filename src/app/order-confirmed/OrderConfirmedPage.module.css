@@ -1,0 +1,363 @@
+.page {
+  min-height: 100vh;
+  background: oklch(0.985 0.01 40);
+  color: var(--color-text);
+}
+
+.main {
+  padding-top: 8rem;
+  padding-bottom: clamp(4rem, 8vw, 7rem);
+}
+
+.frame {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.receipt,
+.fallback {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2rem);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(18rem, 0.7fr);
+  gap: clamp(1rem, 3vw, 2.5rem);
+  align-items: end;
+  padding: clamp(2rem, 4vw, 3rem);
+  background: linear-gradient(135deg, oklch(0.965 0.015 48), oklch(0.94 0.03 28));
+}
+
+.brandBlock {
+  display: grid;
+  gap: 0.8rem;
+  max-width: 34rem;
+}
+
+.brand {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-gray2);
+}
+
+.kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-gray2);
+}
+
+.title {
+  margin: 0;
+  font-family: "PP Mori", system-ui, sans-serif;
+  font-size: clamp(2.6rem, 6vw, 5rem);
+  font-weight: 600;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+}
+
+.summary {
+  margin: 0;
+  max-width: 40rem;
+  color: var(--color-gray2);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.summaryCard {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.25rem, 2.5vw, 1.6rem);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.statusMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.statusLabel,
+.metaGrid dt,
+.totalLabel,
+.addressLabel,
+.notesListLabel,
+.itemsHead {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-gray2);
+}
+
+.statusValue,
+.metaGrid dd,
+.totalValue,
+.addressName {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin: 0;
+}
+
+.metaGrid div {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.addresses {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.addressCard,
+.itemsSection,
+.footerGrid,
+.fallbackCard {
+  padding: clamp(1.4rem, 3vw, 1.9rem);
+  background: oklch(0.995 0.004 40);
+}
+
+.addressCard {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.addressCard p {
+  margin: 0;
+  color: var(--color-gray2);
+  line-height: 1.65;
+}
+
+.itemsSection {
+  display: grid;
+  gap: 1rem;
+}
+
+.itemsHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: end;
+}
+
+.itemsCount {
+  margin: 0;
+  color: var(--color-gray2);
+}
+
+.itemsList {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.itemRow:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.itemName {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.8rem;
+  margin-top: 0.4rem;
+  color: var(--color-gray2);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.itemQtyPrice {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+  min-width: 7rem;
+}
+
+.itemQty {
+  color: var(--color-gray2);
+  font-size: 0.92rem;
+}
+
+.itemTotal {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  gap: clamp(1.2rem, 3vw, 2rem);
+}
+
+.notes {
+  display: grid;
+  gap: 1rem;
+}
+
+.notesList {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--color-gray2);
+  line-height: 1.8;
+}
+
+.customerNote {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 0.4rem;
+}
+
+.customerNote span {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-gray2);
+}
+
+.customerNote p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.7;
+}
+
+.totals {
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+}
+
+.totalRow,
+.grandTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.totalRow {
+  color: var(--color-gray2);
+}
+
+.grandTotal {
+  margin-top: 0.6rem;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  color: var(--color-text);
+}
+
+.grandTotal .totalLabel,
+.grandTotal .totalValue {
+  color: var(--color-text);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-top: 0.8rem;
+}
+
+.action,
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.85rem 1.45rem;
+  border-radius: 999px;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-size: 0.76rem;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.action {
+  background: var(--color-text);
+  color: #fff;
+  border: 1px solid var(--color-text);
+}
+
+.secondaryAction {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid color-mix(in srgb, var(--color-text) 24%, white);
+}
+
+.fallbackCard {
+  display: grid;
+  gap: 1.2rem;
+  max-width: 46rem;
+}
+
+@media (max-width: 991.98px) {
+  .hero,
+  .footerGrid,
+  .addresses {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCard {
+    background: oklch(0.995 0.004 40);
+    backdrop-filter: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .main {
+    padding-top: 6.75rem;
+  }
+
+  .frame {
+    gap: 1rem;
+  }
+
+  .hero,
+  .addressCard,
+  .itemsSection,
+  .footerGrid,
+  .fallbackCard {
+    padding: 1.2rem;
+  }
+
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .itemsHeader,
+  .itemRow {
+    grid-template-columns: 1fr;
+  }
+
+  .itemQtyPrice {
+    justify-items: start;
+    min-width: 0;
+  }
+}

@@ -2,9 +2,11 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 import CheckoutCompletionCartReset from "@/components/CheckoutCompletionCartReset";
+import Header from "@/components/Header";
 import OrderCompletionMarketing from "@/components/OrderCompletionMarketing";
 import { getOrderConfirmation } from "@/lib/storefront/server";
 import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
+import styles from "./OrderConfirmedPage.module.css";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const RECEIPT_TOKEN_COOKIE = "al_order_receipt";
@@ -29,19 +31,15 @@ function AddressBlock({
   const contacts = [address.email, address.phone].filter(Boolean);
 
   return (
-    <section className="order-receipt__address-block">
-      <div className="order-receipt__kicker">{label}</div>
-      {address.name ? <p className="order-receipt__address-name">{address.name}</p> : null}
+    <section className={styles.addressCard}>
+      <div className={styles.addressLabel}>{label}</div>
+      {address.name ? <p className={styles.addressName}>{address.name}</p> : null}
       {lines.map((line) => (
         <p key={`${label}:${line}`}>{line}</p>
       ))}
-      {contacts.length > 0 ? (
-        <div className="order-receipt__address-contact">
-          {contacts.map((contact) => (
-            <p key={`${label}:contact:${contact}`}>{contact}</p>
-          ))}
-        </div>
-      ) : null}
+      {contacts.map((contact) => (
+        <p key={`${label}:contact:${contact}`}>{contact}</p>
+      ))}
     </section>
   );
 }
@@ -52,29 +50,23 @@ function OrderFallback({
   hasMissingReceipt: boolean;
 }) {
   return (
-    <article className="order-receipt order-receipt--fallback">
-      <header className="order-receipt__header">
-        <div>
-          <p className="order-receipt__brand">AestheticsLink</p>
-          <div className="order-receipt__kicker">Order Confirmation</div>
-        </div>
-      </header>
-
-      <section className="order-receipt__section">
-        <h1 className="order-receipt__title">
+    <article className={styles.fallback}>
+      <section className={styles.fallbackCard}>
+        <p className={styles.brand}>AestheticsLink</p>
+        <div className={styles.kicker}>Order confirmation</div>
+        <h1 className={styles.title}>
           {hasMissingReceipt ? "We could not verify this order receipt." : "We could not load the full order details."}
         </h1>
-        <p className="order-receipt__summary">
+        <p className={styles.summary}>
           {hasMissingReceipt
             ? "This receipt link is missing or has expired. Reopen the completion link from checkout or use your confirmation email if you need the order details again."
             : "The order appears complete, but the receipt data could not be loaded right now. Please use your confirmation email if you need to review the order immediately."}
         </p>
-      </section>
-
-      <section className="order-receipt__section order-receipt__actions">
-        <Link href={STOREFRONT_RETURN_HREF} className="order-receipt__action-link">
-          Return to storefront
-        </Link>
+        <div className={styles.actions}>
+          <Link href={STOREFRONT_RETURN_HREF} className={styles.action}>
+            Return to storefront
+          </Link>
+        </div>
       </section>
     </article>
   );
@@ -84,32 +76,37 @@ function OrderReceipt({ order }: { order: StorefrontOrderConfirmation }) {
   const shippingAddress = order.shippingAddress.lines.length > 0 ? order.shippingAddress : order.billingAddress;
 
   return (
-    <article className="order-receipt" aria-labelledby="order-receipt-title">
-      <header className="order-receipt__header">
-        <div className="order-receipt__masthead">
-          <div>
-            <p className="order-receipt__brand">AestheticsLink</p>
-            <div className="order-receipt__kicker">Formal Order Receipt</div>
-          </div>
-          <div className="order-receipt__status-block">
-            <span className="order-receipt__status-label">Status</span>
-            <strong>{order.statusLabel}</strong>
+    <article className={styles.receipt} aria-labelledby="order-receipt-title">
+      <section className={styles.hero}>
+        <div className={styles.brandBlock}>
+          <p className={styles.brand}>AestheticsLink</p>
+          <div className={styles.kicker}>Formal order receipt</div>
+          <h1 id="order-receipt-title" className={styles.title}>
+            Order received,
+            <br />
+            beautifully recorded.
+          </h1>
+          <p className={styles.summary}>
+            This document confirms your submitted order, payment reference, delivery details, and final line-item totals.
+          </p>
+          <div className={styles.actions}>
+            <Link href={STOREFRONT_RETURN_HREF} className={styles.action}>
+              Continue shopping
+            </Link>
+            <Link href="/profile" className={styles.secondaryAction}>
+              Open account
+            </Link>
           </div>
         </div>
 
-        <div className="order-receipt__hero">
-          <div>
-            <h1 id="order-receipt-title" className="order-receipt__title">
-              Order received and recorded.
-            </h1>
-            <p className="order-receipt__summary">
-              This document confirms the submitted order, payment reference, delivery address, and line-item totals.
-            </p>
+        <div className={styles.summaryCard}>
+          <div className={styles.statusMeta}>
+            <span className={styles.statusLabel}>Status</span>
+            <strong className={styles.statusValue}>{order.statusLabel}</strong>
           </div>
-
-          <dl className="order-receipt__meta-grid">
+          <dl className={styles.metaGrid}>
             <div>
-              <dt>Order Number</dt>
+              <dt>Order number</dt>
               <dd>#{order.orderNumber}</dd>
             </div>
             <div>
@@ -126,92 +123,79 @@ function OrderReceipt({ order }: { order: StorefrontOrderConfirmation }) {
             </div>
           </dl>
         </div>
-      </header>
-
-      <section className="order-receipt__section order-receipt__address-grid">
-        <AddressBlock label="Delivery Address" address={shippingAddress} />
-        <AddressBlock label="Billing Address" address={order.billingAddress} />
       </section>
 
-      <section className="order-receipt__section">
-        <div className="order-receipt__section-head">
-          <div className="order-receipt__kicker">Line Items</div>
-          <p>{order.itemCount} confirmed {order.itemCount === 1 ? "item" : "items"}</p>
+      <section className={styles.addresses}>
+        <AddressBlock label="Delivery address" address={shippingAddress} />
+        <AddressBlock label="Billing address" address={order.billingAddress} />
+      </section>
+
+      <section className={styles.itemsSection}>
+        <div className={styles.itemsHeader}>
+          <div className={styles.itemsHead}>Line items</div>
+          <p className={styles.itemsCount}>
+            {order.itemCount} confirmed {order.itemCount === 1 ? "item" : "items"}
+          </p>
         </div>
 
-        <div className="order-receipt__table" role="table" aria-label="Ordered items">
-          <div className="order-receipt__table-head" role="row">
-            <span role="columnheader">Item</span>
-            <span role="columnheader">Qty</span>
-            <span role="columnheader">Unit</span>
-            <span role="columnheader">Total</span>
-          </div>
-
-          <div className="order-receipt__table-body">
-            {order.items.map((item) => (
-              <div
-                key={`${item.id}:${item.variationId}:${item.name}`}
-                className="order-receipt__table-row"
-                role="row"
-              >
-                <div className="order-receipt__table-item" role="cell">
-                  <strong>{item.name}</strong>
-                  <div className="order-receipt__table-item-meta">
-                    {item.sku ? <span>SKU {item.sku}</span> : null}
-                    {item.meta.map((meta) => (
-                      <span key={`${item.name}:${meta.label}:${meta.value}`}>
-                        {meta.label}: {meta.value}
-                      </span>
-                    ))}
-                  </div>
+        <div className={styles.itemsList}>
+          {order.items.map((item) => (
+            <article key={`${item.id}:${item.variationId}:${item.name}`} className={styles.itemRow}>
+              <div>
+                <p className={styles.itemName}>{item.name}</p>
+                <div className={styles.itemMeta}>
+                  <span>Qty {item.quantity}</span>
+                  {item.sku ? <span>SKU {item.sku}</span> : null}
+                  {item.meta.map((meta) => (
+                    <span key={`${item.name}:${meta.label}:${meta.value}`}>
+                      {meta.label}: {meta.value}
+                    </span>
+                  ))}
                 </div>
-                <span role="cell">{item.quantity}</span>
-                <span role="cell">{item.unitPrice}</span>
-                <strong role="cell">{item.lineTotal}</strong>
               </div>
-            ))}
-          </div>
+
+              <div className={styles.itemQtyPrice}>
+                <span className={styles.itemQty}>{item.unitPrice}</span>
+                <strong className={styles.itemTotal}>{item.lineTotal}</strong>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="order-receipt__section order-receipt__footer-grid">
-        <div className="order-receipt__next-steps">
-          <div className="order-receipt__kicker">Operational Notes</div>
-          <ul>
+      <section className={styles.footerGrid}>
+        <div className={styles.notes}>
+          <div className={styles.notesListLabel}>Operational notes</div>
+          <ul className={styles.notesList}>
             <li>A confirmation email has been issued to the billing contact.</li>
             <li>Keep order #{order.orderNumber} for account or support queries.</li>
             <li>Delivery updates will follow once fulfillment begins.</li>
           </ul>
+
           {order.customerNote ? (
-            <div className="order-receipt__customer-note">
-              <span>Order Note</span>
+            <div className={styles.customerNote}>
+              <span>Order note</span>
               <p>{order.customerNote}</p>
             </div>
           ) : null}
-
-          <div className="order-receipt__actions">
-            <Link href={STOREFRONT_RETURN_HREF} className="order-receipt__action-link">
-              Return to storefront
-            </Link>
-          </div>
         </div>
 
-        <div className="order-receipt__totals">
-          <div>
-            <span>Subtotal</span>
-            <strong>{order.totals.subtotal}</strong>
+        <div className={styles.totals}>
+          <div className={styles.totalRow}>
+            <span className={styles.totalLabel}>Subtotal</span>
+            <strong className={styles.totalValue}>{order.totals.subtotal}</strong>
           </div>
-          <div>
-            <span>Shipping</span>
-            <strong>{order.totals.shipping}</strong>
+          <div className={styles.totalRow}>
+            <span className={styles.totalLabel}>Shipping</span>
+            <strong className={styles.totalValue}>{order.totals.shipping}</strong>
           </div>
-          <div>
-            <span>Tax</span>
-            <strong>{order.totals.tax}</strong>
+          <div className={styles.totalRow}>
+            <span className={styles.totalLabel}>Tax</span>
+            <strong className={styles.totalValue}>{order.totals.tax}</strong>
           </div>
-          <div className="order-receipt__grand-total">
-            <span>Total</span>
-            <strong>{order.totals.total}</strong>
+          <div className={styles.grandTotal}>
+            <span className={styles.totalLabel}>Total</span>
+            <strong className={styles.totalValue}>{order.totals.total}</strong>
           </div>
         </div>
       </section>
@@ -250,15 +234,14 @@ export default async function OrderConfirmedPage({
   }
 
   return (
-    <main className="order-receipt-page">
-      <CheckoutCompletionCartReset shouldReset={justCompleted} />
-      <div className="order-receipt-page__frame container">
-        {order ? (
-          <OrderReceipt order={order} />
-        ) : (
-          <OrderFallback hasMissingReceipt={hasMissingReceipt} />
-        )}
-      </div>
-    </main>
+    <div className={styles.page}>
+      <Header darkLogo forceScrolled />
+      <main className={`container ${styles.main}`}>
+        <CheckoutCompletionCartReset shouldReset={justCompleted} />
+        <div className={styles.frame}>
+          {order ? <OrderReceipt order={order} /> : <OrderFallback hasMissingReceipt={hasMissingReceipt} />}
+        </div>
+      </main>
+    </div>
   );
 }

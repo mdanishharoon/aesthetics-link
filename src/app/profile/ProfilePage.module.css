@@ -1,0 +1,558 @@
+.page {
+  min-height: 100vh;
+  background: oklch(0.985 0.01 40);
+  color: var(--color-text);
+}
+
+.main {
+  padding-top: 8rem;
+  padding-bottom: clamp(4rem, 8vw, 7rem);
+}
+
+.dashboard {
+  display: grid;
+  gap: clamp(1rem, 2.6vw, 2rem);
+}
+
+.loading {
+  margin: 0;
+  padding: 2rem 0;
+  color: var(--color-gray2);
+}
+
+.loadingShell {
+  padding-top: 8rem;
+}
+
+.banner,
+.bannerError,
+.clinicNotice,
+.hero,
+.orders,
+.orderDetail,
+.settings,
+.guestCard,
+.empty,
+.statusStrip {
+  background: oklch(0.995 0.004 40);
+}
+
+.banner,
+.bannerError {
+  padding: 1rem 1.2rem;
+  color: var(--color-text);
+}
+
+.bannerError {
+  background: oklch(0.95 0.03 22);
+}
+
+.eyebrow {
+  display: inline-block;
+  margin: 0 0 0.65rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-gray2);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: "PP Mori", system-ui, sans-serif;
+  font-size: clamp(1.4rem, 2.3vw, 2rem);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.copy {
+  margin: 0;
+  color: var(--color-gray2);
+  line-height: 1.7;
+  max-width: 65ch;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.button,
+.buttonSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0.85rem 1.4rem;
+  border-radius: 999px;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  font-family: inherit;
+}
+
+.button {
+  background: var(--color-text);
+  color: #fff;
+  border: 1px solid var(--color-text);
+}
+
+.buttonSecondary {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid color-mix(in srgb, var(--color-text) 24%, white);
+}
+
+.button:disabled,
+.buttonSecondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.button:hover,
+.buttonSecondary:hover {
+  text-decoration: none;
+}
+
+.guestCard {
+  display: grid;
+  gap: 1rem;
+  max-width: 46rem;
+  padding: clamp(1.4rem, 3vw, 2rem);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(18rem, 0.7fr);
+  gap: clamp(1rem, 3vw, 2rem);
+  padding: clamp(1.5rem, 3vw, 2rem);
+  background: linear-gradient(135deg, oklch(0.97 0.016 48), oklch(0.94 0.03 28));
+}
+
+.identity {
+  display: flex;
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(4rem, 7vw, 5.5rem);
+  height: clamp(4rem, 7vw, 5.5rem);
+  background: rgba(255, 255, 255, 0.86);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.heroMeta {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.heroName {
+  margin: 0;
+  font-family: "PP Mori", system-ui, sans-serif;
+  font-size: clamp(2.4rem, 5vw, 4.75rem);
+  font-weight: 600;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+
+.heroBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.badge,
+.badgeStatus,
+.statusDot,
+.orderStatus,
+.accountPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.badge,
+.accountPill {
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-text);
+}
+
+.badgeStatus,
+.orderStatus {
+  background: oklch(0.95 0.01 45);
+  color: var(--color-text);
+}
+
+.isApproved,
+.isComplete {
+  background: oklch(0.94 0.03 150);
+}
+
+.isRejected,
+.isInactive {
+  background: oklch(0.94 0.03 22);
+}
+
+.isPending,
+.isActive {
+  background: oklch(0.95 0.03 82);
+}
+
+.heroEmail {
+  margin: 0.35rem 0 0;
+  color: var(--color-gray2);
+}
+
+.heroAside {
+  display: grid;
+  gap: 1rem;
+  align-content: space-between;
+}
+
+.heroBlurb {
+  margin: 0;
+  color: var(--color-gray2);
+  line-height: 1.7;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.clinicNotice {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.2rem 1.35rem;
+}
+
+.clinicNotice p,
+.clinicNoticeSub {
+  margin: 0;
+  color: var(--color-gray2);
+  line-height: 1.6;
+}
+
+.statusStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  padding: 1rem 1.2rem;
+}
+
+.statusStripLink {
+  color: var(--color-text);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.76rem;
+}
+
+.content {
+  display: grid;
+  gap: clamp(1rem, 2.4vw, 1.6rem);
+}
+
+.orders,
+.orderDetail,
+.settings,
+.empty {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.3rem, 2.8vw, 1.8rem);
+}
+
+.ordersHeader,
+.detailHeader,
+.settingsHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.ordersSummary {
+  display: grid;
+  gap: 0.18rem;
+  text-align: right;
+  color: var(--color-gray2);
+  font-size: 0.9rem;
+}
+
+.ordersLoading {
+  margin: 0;
+  color: var(--color-gray2);
+}
+
+.ordersList {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.orderCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 0.6fr)) auto;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.orderCard:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.orderCardSelected {
+  position: relative;
+}
+
+.orderPrimary,
+.orderSecondary,
+.orderActions,
+.detailMeta,
+.detailTotals,
+.detailAddresses,
+.fieldGrid,
+.fieldGridWide,
+.businessBlock {
+  display: grid;
+}
+
+.orderNumber,
+.detailItemName,
+.addressName {
+  font-weight: 600;
+}
+
+.orderPreview,
+.orderMeta,
+.orderMobileLabel,
+.detailMeta span,
+.detailItemMeta,
+.detailAddress p,
+.field label,
+.fieldsetIntro,
+.settingsMessage {
+  color: var(--color-gray2);
+}
+
+.orderPreview,
+.orderMeta,
+.detailItemMeta,
+.detailAddress p,
+.settingsMessage {
+  margin: 0.35rem 0 0;
+  line-height: 1.6;
+}
+
+.orderMobileLabel {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.orderActions {
+  grid-auto-flow: column;
+  gap: 0.6rem;
+  align-content: start;
+}
+
+.detailContent,
+.detailItems,
+.fieldGrid,
+.fieldGridWide,
+.businessBlock {
+  gap: 1rem;
+}
+
+.detailMeta {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.detailMeta div,
+.detailTotals div {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.detailItems {
+  display: grid;
+}
+
+.detailItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 0.95rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.detailItem:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.detailFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+  gap: 1.2rem;
+}
+
+.detailAddresses {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.detailAddress {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.detailTotals {
+  gap: 0.75rem;
+}
+
+.grandTotal {
+  margin-top: 0.5rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.fieldGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fieldGridWide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fieldWide {
+  grid-column: span 2;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field label,
+.field span {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.field input {
+  min-height: 3.2rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-text) 14%, white);
+  background: color-mix(in srgb, white 88%, oklch(0.97 0.01 45));
+  color: var(--color-text);
+  font: inherit;
+}
+
+.field input:disabled {
+  background: color-mix(in srgb, white 55%, oklch(0.97 0.01 45));
+  color: var(--color-gray2);
+}
+
+.businessSection {
+  display: grid;
+  gap: 0.8rem;
+  padding-top: 0.5rem;
+}
+
+.settingsState {
+  display: grid;
+  gap: 0.7rem;
+}
+
+@media (max-width: 1199.98px) {
+  .orderCard {
+    grid-template-columns: minmax(0, 1fr) repeat(2, minmax(0, 0.7fr));
+  }
+
+  .orderActions {
+    grid-column: 1 / -1;
+    grid-auto-flow: column;
+    justify-content: start;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .hero,
+  .detailFooter,
+  .detailAddresses,
+  .fieldGrid,
+  .fieldGridWide {
+    grid-template-columns: 1fr;
+  }
+
+  .ordersHeader,
+  .detailHeader,
+  .settingsHeader {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .ordersSummary {
+    text-align: left;
+  }
+
+  .fieldWide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .main {
+    padding-top: 6.75rem;
+  }
+
+  .hero,
+  .clinicNotice,
+  .orders,
+  .orderDetail,
+  .settings,
+  .guestCard,
+  .empty,
+  .statusStrip {
+    padding: 1.15rem;
+  }
+
+  .identity {
+    flex-direction: column;
+  }
+
+  .heroActions,
+  .actionRow,
+  .orderActions {
+    grid-auto-flow: row;
+  }
+
+  .orderCard,
+  .detailMeta,
+  .detailItem {
+    grid-template-columns: 1fr;
+  }
+}

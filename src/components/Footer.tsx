@@ -11,7 +11,7 @@ import { resolveMarketingCustomerType, resolveMarketingRegion } from "@/lib/mark
 function ArrowLongIcon() {
   return (
     <svg className="icon-arrowlong" width="19" height="19" viewBox="0 0 19 19" fill="none">
-      <path d="M18.7425 0.726739C18.7425 0.467333 18.5322 0.257042 18.2728 0.257042L14.0455 0.257042C13.7861 0.257042 13.5758 0.467333 13.5758 0.72674C13.5758 0.986147 13.7861 1.19644 14.0455 1.19644L17.8031 1.19644L17.8031 4.95401C17.8031 5.21342 18.0134 5.42371 18.2728 5.42371C18.5322 5.42371 18.7425 5.21342 18.7425 4.95401L18.7425 0.726739ZM0.786716 18.877L18.6049 1.05887L17.9406 0.394614L0.122464 18.2128L0.786716 18.877Z" fill="white" />
+      <path d="M18.7425 0.726739C18.7425 0.467333 18.5322 0.257042 18.2728 0.257042L14.0455 0.257042C13.7861 0.257042 13.5758 0.467333 13.5758 0.72674C13.5758 0.986147 13.7861 1.19644 14.0455 1.19644L17.8031 1.19644L17.8031 4.95401C17.8031 5.21342 18.0134 5.42371 18.2728 5.42371C18.5322 5.42371 18.7425 5.21342 18.7425 4.95401L18.7425 0.726739ZM0.786716 18.877L18.6049 1.05887L17.9406 0.394614L0.122464 18.2128L0.786716 18.877Z" fill="currentColor" />
     </svg>
   );
 }
@@ -94,21 +94,18 @@ export default function Footer() {
                 <p className="subtitle text-gray2">Explore</p>
                 <ul>
                   <li><Link href="/products" className="link">Shop</Link></li>
-                  <li><Link href="/philosophy" className="link">Philosophy</Link></li>
-                  <li><Link href="/gallery" className="link">Gallery</Link></li>
-                  <li><Link href="/journal" className="link">Journal</Link></li>
                   <li><Link href="/profile" className="link">Account</Link></li>
                 </ul>
               </div>
               <div className="col-md-4 col-6">
                 <p className="subtitle text-gray2">Follow Us</p>
                 <ul>
-                  <li>
-                    <a href="https://www.instagram.com/aestheticslink/" target="_blank" rel="noopener noreferrer" className="link">Instagram</a>
-                  </li>
-                  <li>
-                    <a href="https://www.facebook.com/aestheticslink/" target="_blank" rel="noopener noreferrer" className="link">Facebook</a>
-                  </li>
+<li>
+                      <a href="https://www.instagram.com/aestheticslinkuk/" target="_blank" rel="noopener noreferrer" className="link">Instagram</a>
+                    </li>
+                    <li>
+                      <a href="https://www.facebook.com/profile.php?id=61583653782861" target="_blank" rel="noopener noreferrer" className="link">Facebook</a>
+                    </li>
                 </ul>
               </div>
               <div className="col-md-4 col-12 mt-5 mt-md-0">
@@ -144,14 +141,12 @@ export default function Footer() {
                   aria-label="Your email address"
                   required
                 />
-                <button className="footer__submit flex-center flex-column" type="submit" disabled={isSubmitting}>
-                  <div className="arrowlong">
-                    <ArrowLongIcon />
-                  </div>
-                  <span className="text-underline mt-3 text-uppercase text-gray2">
+                <button className="btn btn--white" type="submit" disabled={isSubmitting}>
                     {isSubmitting ? "Submitting..." : "Subscribe"}
-                  </span>
-                </button>
+                    <span className="btn-arrow">
+                      <ArrowLongIcon />
+                    </span>
+                  </button>
               </form>
               {status ? (
                 <p
@@ -187,14 +182,6 @@ export default function Footer() {
               &copy; 2026 AestheticsLink, All Rights Reserved
             </p>
             <ul className="footer__copyright-links">
-              <li><p className="disclaimer">Disclaimer</p></li>
-              <li><p className="credits">Credits</p></li>
-              <li>
-                <p className="name">
-                  Developed by:{" "}
-                  <a href="https://quantumimpact.io/" target="_blank" rel="noopener noreferrer">Quantum Impact</a>
-                </p>
-              </li>
             </ul>
           </div>
         </div>

@@ -36,21 +36,21 @@ export default function Connect() {
             </p>
           </div>
 
-          <div className="col-md-8 px-md-5 position-relative">
+          <div className="col-md-8 px-md-5 position-relative connect__main">
             <h2 className="connect__title-1 text-center">
               Connect <br /> With Us
             </h2>
-            <div className="connect__image">
-              <div className="media-img desktop">
-                <Image alt="Connect" src="/images/instagram.jpeg" fill sizes="66vw" style={{ objectFit: "cover", objectPosition: "center" }} />
-              </div>
-              <div className="media-img mobile">
-                <Image alt="Connect" src="/images/connect-m.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} />
-              </div>
-            </div>
             <h2 className="connect__title-2 text-center font-serif">
               on <br /> instagram
             </h2>
+            <div className="connect__image">
+              <div className="media-img desktop-only">
+                <Image alt="Connect" src="/images/instagram.jpeg" fill sizes="66vw" style={{ objectFit: "cover", objectPosition: "center" }} />
+              </div>
+              <div className="media-img mobile-only">
+                <Image alt="Connect" src="/images/connect-m.jpg" fill sizes="100vw" style={{ objectFit: "cover" }} />
+              </div>
+            </div>
             <div className="connect__socmed">
               <a
                 href="https://www.instagram.com/aestheticslink/"

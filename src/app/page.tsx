@@ -10,7 +10,7 @@ import Explore from '@/components/Explore';
 import type { LandingExploreProduct } from '@/components/Explore';
 import Ethos from '@/components/Ethos';
 import Journal from '@/components/Journal';
-import Connect from '@/components/Connect';
+import SocialConnect from '@/components/SocialConnect';
 import Footer from '@/components/Footer';
 import { getCatalogProducts, getStorefrontNavigation } from '@/lib/storefront/server';
 import type { StorefrontCatalogProduct } from '@/lib/storefront/types';
@@ -199,7 +199,7 @@ export default async function Home() {
         <Explore bestsellers={bestsellers} newArrivals={newArrivals} />
         <Ethos />
         <Journal />
-        <Connect />
+        <SocialConnect />
       </main>
       <Footer />
     </div>
