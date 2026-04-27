@@ -59,6 +59,16 @@ function cookieOptions() {
   };
 }
 
+function clearWooCartSession(response: NextResponse): void {
+  response.cookies.delete(WOO_CART_TOKEN_COOKIE);
+  response.cookies.delete(WOO_NONCE_TOKEN_COOKIE);
+}
+
+function clearAuthAndWooSession(response: NextResponse): void {
+  response.cookies.delete(SESSION_COOKIE);
+  clearWooCartSession(response);
+}
+
 async function handler(req: NextRequest, context: RouteContextParams): Promise<NextResponse> {
   const { action: maybeAction } = await context.params;
 
@@ -79,9 +89,7 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
 
   if (maybeAction === "logout" && !sessionToken) {
     const response = NextResponse.json({ ok: true });
-    response.cookies.delete(SESSION_COOKIE);
-    response.cookies.delete(WOO_CART_TOKEN_COOKIE);
-    response.cookies.delete(WOO_NONCE_TOKEN_COOKIE);
+    clearAuthAndWooSession(response);
     return response;
   }
 
@@ -138,11 +146,6 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
 
   const response = NextResponse.json(upstreamPayload, { status: upstream.status });
 
-  const clearWooCartSession = (): void => {
-    response.cookies.delete(WOO_CART_TOKEN_COOKIE);
-    response.cookies.delete(WOO_NONCE_TOKEN_COOKIE);
-  };
-
   if ((maybeAction === "login" || maybeAction === "register" || maybeAction === "verify-email") && upstream.ok) {
     const token = upstreamPayload.session_token;
     if (typeof token === "string" && token.length > 20) {
@@ -155,17 +158,24 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
 
     if (maybeAction === "login" || maybeAction === "verify-email") {
       // Prevent cart/session leakage when switching accounts in the same browser.
-      clearWooCartSession();
+      clearWooCartSession(response);
     }
   }
 
   if (maybeAction === "logout" && upstream.ok) {
-    response.cookies.delete(SESSION_COOKIE);
-    clearWooCartSession();
+    clearAuthAndWooSession(response);
   }
 
-  if (maybeAction === "me" && upstream.status === 401) {
-    response.cookies.delete(SESSION_COOKIE);
+  if (
+    (maybeAction === "me" ||
+      maybeAction === "dashboard" ||
+      maybeAction === "order" ||
+      maybeAction === "orders" ||
+      maybeAction === "profile" ||
+      maybeAction === "wholesale-prices") &&
+    upstream.status === 401
+  ) {
+    clearAuthAndWooSession(response);
   }
 
   return response;

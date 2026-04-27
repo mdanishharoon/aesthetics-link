@@ -55,15 +55,11 @@ function VerifyEmailContent() {
   const clinicState = searchParams.get("clinic") === "1";
 
   const helperText = useMemo(() => {
-    if (!createdState) {
+    if (!createdState || !clinicState) {
       return null;
     }
 
-    if (clinicState) {
-      return "Clinic application received. Verify your email to activate clinic login, then track approval in your profile.";
-    }
-
-    return "Account created. Retail login is already available; email verification is still recommended for account security.";
+    return "Clinic application received. Verify your email to activate clinic login, then track approval in your profile.";
   }, [clinicState, createdState]);
 
   async function handleResend(event: React.FormEvent<HTMLFormElement>): Promise<void> {

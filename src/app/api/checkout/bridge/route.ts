@@ -7,19 +7,6 @@ const CART_TOKEN_COOKIE = "woo_cart_token";
 const SESSION_COOKIE = "al_session_token";
 const AUTH_ME_ENDPOINT = "/wp-json/aesthetics-link/v1/auth/me";
 
-function getCheckoutDestination(baseUrl: string): string {
-  const configured = process.env.NEXT_PUBLIC_WOOCOMMERCE_CHECKOUT_URL?.trim();
-  if (configured) {
-    try {
-      return new URL(configured).toString();
-    } catch {
-      // Ignore invalid explicit checkout URL and derive from base URL.
-    }
-  }
-
-  return new URL("/checkout", baseUrl).toString();
-}
-
 function signPayload(payload: string, secret: string): string {
   return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
 }
@@ -35,11 +22,11 @@ function redirectToFrontendCartWithError(request: NextRequest, errorCode: string
 async function getBridgeUserId(
   baseUrl: string,
   sessionToken: string | undefined,
-): Promise<{ ok: boolean; userId: number | null }> {
+): Promise<{ ok: boolean; userId: number | null; clearSession: boolean }> {
   const token = sessionToken?.trim();
 
   if (!token) {
-    return { ok: true, userId: null };
+    return { ok: true, userId: null, clearSession: false };
   }
 
   try {
@@ -53,10 +40,14 @@ async function getBridgeUserId(
     });
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        return { ok: true, userId: null, clearSession: true };
+      }
+
       console.error("[Checkout bridge] Failed to resolve bridge user context.", {
         status: response.status,
       });
-      return { ok: false, userId: null };
+      return { ok: false, userId: null, clearSession: false };
     }
 
     const payload = (await response.json().catch(() => null)) as
@@ -68,13 +59,13 @@ async function getBridgeUserId(
 
     if (!Number.isInteger(userId) || userId <= 0) {
       console.error("[Checkout bridge] Auth /me response did not include a valid user id.");
-      return { ok: false, userId: null };
+      return { ok: false, userId: null, clearSession: false };
     }
 
-    return { ok: true, userId };
+    return { ok: true, userId, clearSession: false };
   } catch (error) {
     console.error("[Checkout bridge] Failed to fetch bridge user context.", error);
-    return { ok: false, userId: null };
+    return { ok: false, userId: null, clearSession: false };
   }
 }
 
@@ -85,7 +76,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ message: "WOOCOMMERCE_STORE_URL is not configured." }, { status: 500 });
   }
 
-  const checkoutUrl = getCheckoutDestination(baseUrl);
   const cartToken = request.cookies.get(CART_TOKEN_COOKIE)?.value?.trim();
   const sessionToken = request.cookies.get(SESSION_COOKIE)?.value;
   const secret =
@@ -121,6 +111,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const bridgeUrl = new URL("/wp-json/aesthetics-link/v1/checkout/bridge", baseUrl);
   bridgeUrl.searchParams.set("al_b2b_checkout_bridge", payload);
   bridgeUrl.searchParams.set("sig", signature);
+  const response = NextResponse.redirect(bridgeUrl.toString(), 307);
 
-  return NextResponse.redirect(bridgeUrl.toString(), 307);
+  if (bridgeUser.clearSession) {
+    response.cookies.delete(SESSION_COOKIE);
+  }
+
+  return response;
 }

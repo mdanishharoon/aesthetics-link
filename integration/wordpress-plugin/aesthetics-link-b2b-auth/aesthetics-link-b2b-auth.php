@@ -543,10 +543,24 @@ function al_b2b_normalize_frontend_url($raw_url) {
 }
 
 function al_b2b_get_frontend_base_url() {
-	// Dev override: define AL_B2B_DEV_FRONTEND_URL in wp-config.php to redirect
-	// post-checkout back to a local dev server (e.g. http://localhost:3000).
-	// Never set this on production — comment it out when not actively developing.
-	if (defined('AL_B2B_DEV_FRONTEND_URL') && trim((string) AL_B2B_DEV_FRONTEND_URL)) {
+	// Dev override is now guarded to prevent localhost redirects on production:
+	// it only activates when BOTH conditions are true:
+	// 1) AL_B2B_ENABLE_DEV_FRONTEND_OVERRIDE === true
+	// 2) wp_get_environment_type() is "local" or "development"
+	$allow_dev_override = defined('AL_B2B_ENABLE_DEV_FRONTEND_OVERRIDE')
+		? (bool) AL_B2B_ENABLE_DEV_FRONTEND_OVERRIDE
+		: false;
+	$wp_environment = function_exists('wp_get_environment_type')
+		? (string) wp_get_environment_type()
+		: '';
+	$is_dev_environment = in_array($wp_environment, array('local', 'development'), true);
+
+	if (
+		$allow_dev_override &&
+		$is_dev_environment &&
+		defined('AL_B2B_DEV_FRONTEND_URL') &&
+		trim((string) AL_B2B_DEV_FRONTEND_URL)
+	) {
 		$dev = al_b2b_normalize_frontend_url(trim((string) AL_B2B_DEV_FRONTEND_URL));
 		if ($dev) {
 			return $dev;
@@ -605,12 +619,23 @@ function al_b2b_override_return_url($return_url, $order) {
 }
 
 function al_b2b_lock_checkout_subdomain() {
+	global $pagenow;
+
 	// Allow REST API, admin, cron, and login page.
 	if (
 		(defined('REST_REQUEST') && REST_REQUEST) ||
 		(defined('DOING_CRON') && DOING_CRON) ||
-		is_admin()
+		is_admin() ||
+		$pagenow === 'wp-login.php'
 	) {
+		return;
+	}
+
+	// Allow WooCommerce gateway callbacks (e.g. ?wc-api=...).
+	$wc_api = isset($_GET['wc-api']) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		? sanitize_key((string) wp_unslash($_GET['wc-api'])) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		: '';
+	if ($wc_api !== '') {
 		return;
 	}
 
@@ -3606,10 +3631,18 @@ function al_b2b_register_user($request) {
 	update_user_meta($user_id, AL_B2B_ACCOUNT_TYPE_META, $account_type);
 	update_user_meta($user_id, AL_B2B_CLINIC_STATUS_META, $account_type === 'clinic' ? 'pending' : 'approved');
 	update_user_meta($user_id, AL_B2B_BUSINESS_INFO_META, $business_info);
-	update_user_meta($user_id, AL_B2B_EMAIL_VERIFIED_META, 0);
+	update_user_meta($user_id, AL_B2B_EMAIL_VERIFIED_META, $account_type === 'clinic' ? 0 : 1);
 
 	$user = get_user_by('id', $user_id);
-	$email_sent = al_b2b_send_verification_email($user);
+	$is_clinic_account = $account_type === 'clinic';
+	$email_sent = false;
+	$session_token = '';
+
+	if ($is_clinic_account) {
+		$email_sent = al_b2b_send_verification_email($user);
+	} else {
+		$session_token = (string) al_b2b_issue_session($user_id);
+	}
 
 	if ($marketing_opt_in && $email && is_email($email)) {
 		$customer_type = $account_type === 'clinic' ? 'clinic' : 'retail';
@@ -3640,10 +3673,12 @@ function al_b2b_register_user($request) {
 
 	return rest_ensure_response(array(
 		'user' => al_b2b_map_user($user),
-		'requiresApproval' => $account_type === 'clinic',
-		'requiresEmailVerification' => true,
-		'emailDeliveryAttempted' => $email_sent,
-		'message' => 'Account created. Please check your inbox to verify your email.',
+		'requiresApproval' => $is_clinic_account,
+		'emailDeliveryAttempted' => $is_clinic_account ? $email_sent : false,
+		'session_token' => $session_token,
+		'message' => $is_clinic_account
+			? 'Clinic account created. Please check your inbox to verify your email.'
+			: 'Account created and signed in.',
 	));
 }
 
@@ -3736,7 +3771,8 @@ function al_b2b_request_email_verification($request) {
 	$email = isset($body['email']) ? sanitize_email($body['email']) : '';
 	if ($email && is_email($email)) {
 		$user = get_user_by('email', $email);
-		if ($user && !al_b2b_is_email_verified($user->ID)) {
+		$is_clinic_account = $user && get_user_meta($user->ID, AL_B2B_ACCOUNT_TYPE_META, true) === 'clinic';
+		if ($is_clinic_account && !al_b2b_is_email_verified($user->ID)) {
 			al_b2b_send_verification_email($user);
 		}
 	}
@@ -3775,6 +3811,9 @@ function al_b2b_verify_email($request) {
 	al_b2b_clear_one_time_token($user->ID, AL_B2B_EMAIL_VERIFY_HASH_META, AL_B2B_EMAIL_VERIFY_EXPIRES_META);
 
 	$session_token = al_b2b_issue_session($user->ID);
+	if (!$session_token) {
+		return new WP_Error('session_issue_failed', 'Email verified, but session could not be started. Please sign in.', array('status' => 500));
+	}
 
 	return rest_ensure_response(array(
 		'ok' => true,

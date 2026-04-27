@@ -72,7 +72,7 @@ export default function Login() {
               }}
             >
               <p>
-                Retail accounts can sign in right away. Clinic / B2B accounts must verify email before first login.
+                Retail accounts sign in immediately. Clinic / B2B accounts must verify email before first login.
                 If your password is lost, use{" "}
                 <Link href="/forgot-password" className="auth-link">
                   reset password

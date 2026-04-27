@@ -51,11 +51,12 @@ export default function SignUp() {
   const registerMutation = useMutation({
     mutationFn: register,
     onSuccess: (response) => {
-      const query = new URLSearchParams({ email: form.email, state: "created" });
-      if (response.requiresApproval) {
-        query.set("clinic", "1");
+      if (response.user.accountType === "clinic") {
+        const query = new URLSearchParams({ email: form.email, state: "created", clinic: "1" });
+        router.push(`/verify-email?${query.toString()}`);
+      } else {
+        router.push("/profile");
       }
-      router.push(`/verify-email?${query.toString()}`);
       router.refresh();
     },
   });

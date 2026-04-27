@@ -49,7 +49,6 @@ export type AuthResponse = {
   user: AuthUser;
   message?: string;
   requiresApproval?: boolean;
-  requiresEmailVerification?: boolean;
   emailDeliveryAttempted?: boolean;
   session_token?: string;
   ok?: boolean;
