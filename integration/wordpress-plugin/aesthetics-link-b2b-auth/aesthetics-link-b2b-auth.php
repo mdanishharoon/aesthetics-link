@@ -34,6 +34,19 @@ defined('AL_B2B_VERIFY_TTL')                 || define('AL_B2B_VERIFY_TTL',     
 defined('AL_B2B_RESET_TTL')                  || define('AL_B2B_RESET_TTL',                  HOUR_IN_SECONDS);
 defined('AL_B2B_SESSION_TTL')                || define('AL_B2B_SESSION_TTL',                30 * DAY_IN_SECONDS);
 
+/*
+ * Load OOP scaffolding (Phase 3a). The plugin's behaviour is still driven by
+ * the procedural code below; the scaffolding boots a no-op orchestrator that
+ * subsequent sub-phases progressively migrate functionality into.
+ */
+require_once __DIR__ . '/includes/interface-module.php';
+require_once __DIR__ . '/includes/interface-auth-strategy.php';
+require_once __DIR__ . '/includes/class-loader.php';
+require_once __DIR__ . '/includes/class-modules.php';
+require_once __DIR__ . '/includes/class-plugin.php';
+
+AL_B2B_Plugin::instance()->boot();
+
 register_activation_hook(__FILE__, 'al_b2b_activate');
 register_deactivation_hook(__FILE__, 'al_b2b_deactivate');
 
