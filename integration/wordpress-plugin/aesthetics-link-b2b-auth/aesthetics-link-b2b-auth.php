@@ -50,6 +50,7 @@ require_once __DIR__ . '/includes/api/class-base-rest-controller.php';
 require_once __DIR__ . '/includes/api/class-auth-controller.php';
 require_once __DIR__ . '/includes/services/class-webhook-dispatcher.php';
 require_once __DIR__ . '/includes/modules/class-module-wholesale-pricing.php';
+require_once __DIR__ . '/includes/modules/class-module-membership-approval.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
@@ -57,7 +58,10 @@ AL_B2B_Plugin::instance()->boot();
 register_activation_hook(__FILE__, 'al_b2b_activate');
 register_deactivation_hook(__FILE__, 'al_b2b_deactivate');
 
-add_action('admin_menu', 'al_b2b_register_admin_menu');
+// admin_menu pages registered per-module: Membership_Approval (3d.3) and
+// Newsletter (3d.4) each add their own page. al_b2b_handle_admin_actions
+// stays globally hooked because it dispatches actions for both modules and
+// menu visibility already gates UI access.
 add_action('admin_init', 'al_b2b_handle_admin_actions');
 add_action('rest_api_init', 'al_b2b_register_routes');
 add_action(AL_B2B_CLEANUP_EVENT, 'al_b2b_cleanup_expired_sessions');

@@ -103,6 +103,7 @@ final class AL_B2B_Plugin {
 		// registry only calls register() on those whose flag is true AND
 		// whose own is_enabled() returns true.
 		$this->modules->register(new AL_B2B_Module_Wholesale_Pricing());
+		$this->modules->register(new AL_B2B_Module_Membership_Approval());
 
 		$this->modules->boot_enabled();
 		$this->loader->run();
