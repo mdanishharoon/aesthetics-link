@@ -28,6 +28,7 @@ final class AL_B2B_Plugin {
 	private AL_B2B_Modules $modules;
 	private AL_B2B_Auth_Strategy_Interface $auth_strategy;
 	private AL_B2B_Webhook_Dispatcher $webhook_dispatcher;
+	private AL_B2B_Auth_Controller $auth_controller;
 	private bool $booted = false;
 
 	public static function instance(): AL_B2B_Plugin {
@@ -47,6 +48,7 @@ final class AL_B2B_Plugin {
 				? $this->config['webhooks']
 				: array()
 		);
+		$this->auth_controller    = new AL_B2B_Auth_Controller($this->auth_strategy);
 	}
 
 	public function get_config(): array {
@@ -94,7 +96,10 @@ final class AL_B2B_Plugin {
 			3
 		);
 
-		// Sub-phases 3d-3e will register modules onto $this->modules here.
+		// Auth REST routes (always on - auth is core).
+		add_action('rest_api_init', array($this->auth_controller, 'register_routes'));
+
+		// Sub-phases 3d.2-3e register feature modules onto $this->modules here.
 		// e.g. $this->modules->register(new AL_B2B_Module_Wholesale_Pricing(...));
 
 		$this->modules->boot_enabled();

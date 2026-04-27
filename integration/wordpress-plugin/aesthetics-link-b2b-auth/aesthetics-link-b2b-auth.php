@@ -47,6 +47,7 @@ require_once __DIR__ . '/includes/class-modules.php';
 require_once __DIR__ . '/includes/auth/class-opaque-session-strategy.php';
 require_once __DIR__ . '/includes/auth/class-jwt-strategy.php';
 require_once __DIR__ . '/includes/api/class-base-rest-controller.php';
+require_once __DIR__ . '/includes/api/class-auth-controller.php';
 require_once __DIR__ . '/includes/services/class-webhook-dispatcher.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
@@ -3353,81 +3354,13 @@ function al_b2b_render_marketing_reviews_page() {
 }
 
 function al_b2b_register_routes() {
-	register_rest_route('aesthetics-link/v1', '/auth/register', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_register_user',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/login', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_login_user',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/me', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_get_me',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/dashboard', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_get_account_dashboard',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/order', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_get_authenticated_order_detail',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/logout', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_logout_user',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/request-email-verification', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_request_email_verification',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/verify-email', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_verify_email',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/request-password-reset', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_request_password_reset',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/reset-password', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_reset_password',
-		'permission_callback' => '__return_true',
-	));
+	// Auth routes (12) registered by AL_B2B_Auth_Controller via its own
+	// rest_api_init callback. /auth/wholesale-prices migrates to the
+	// Wholesale_Pricing module in 3d.2.
 
 	register_rest_route('aesthetics-link/v1', '/auth/wholesale-prices', array(
 		'methods' => 'GET',
 		'callback' => 'al_b2b_get_wholesale_prices',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/profile', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_update_profile',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/auth/orders', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_get_account_orders',
 		'permission_callback' => '__return_true',
 	));
 
