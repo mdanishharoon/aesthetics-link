@@ -1,17 +1,29 @@
 "use client";
 
-import type {
-  StorefrontCart,
-  StorefrontOrderLookupResult,
-  StorefrontProductReviewsResponse,
+import { z } from "zod";
+
+import {
+  StorefrontCartSchema,
+  StorefrontOrderLookupResultSchema,
+  StorefrontProductReviewsResponseSchema,
+  type StorefrontCart,
+  type StorefrontOrderLookupResult,
+  type StorefrontProductReviewsResponse,
 } from "@/types";
 import { decodeEntities } from "@/lib/utils/text";
 import { ACCENT_COLORS } from "@/lib/storefront/constants";
 import {
   WooClientError,
   extractErrorMessage,
+  runSchema,
   wooFetch,
 } from "@/lib/woo-client";
+
+const ReviewSubmitResponseSchema = z.object({
+  ok: z.boolean().optional(),
+  pendingModeration: z.boolean().optional(),
+  message: z.string().optional(),
+});
 
 // ── Raw Store API types ─────────────────────────────────────────────────────
 
@@ -205,30 +217,32 @@ export function getCachedCartSnapshot(): StorefrontCart | null {
     return null;
   }
 
+  let raw: string | null = null;
   try {
-    const raw = window.localStorage.getItem(CART_CACHE_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<StorefrontCart> | null;
-    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.items)) {
-      return null;
-    }
-
-    return {
-      items: parsed.items,
-      itemCount: typeof parsed.itemCount === "number" ? parsed.itemCount : parsed.items.length,
-      subtotal: typeof parsed.subtotal === "string" ? parsed.subtotal : "$0.00",
-      shipping: typeof parsed.shipping === "string" ? parsed.shipping : "$0.00",
-      tax: typeof parsed.tax === "string" ? parsed.tax : "$0.00",
-      total: typeof parsed.total === "string" ? parsed.total : "$0.00",
-      currencySymbol: typeof parsed.currencySymbol === "string" ? parsed.currencySymbol : "$",
-      needsShipping: Boolean(parsed.needsShipping),
-    };
+    raw = window.localStorage.getItem(CART_CACHE_KEY);
   } catch {
     return null;
   }
+
+  if (!raw) {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    clearCachedCartSnapshot();
+    return null;
+  }
+
+  const result = StorefrontCartSchema.safeParse(parsed);
+  if (!result.success) {
+    // Cached snapshot was written by an older schema or got corrupted; drop it.
+    clearCachedCartSnapshot();
+    return null;
+  }
+  return result.data;
 }
 
 // ── Store API client ───────────────────────────────────────────────────────
@@ -349,7 +363,7 @@ async function recoverCartAfterMutationFailure(): Promise<StorefrontCart | null>
 
 export async function fetchCart(): Promise<StorefrontCart> {
   const raw = await requestStoreApi<RawCart>("/cart");
-  const mapped = mapRawCart(raw);
+  const mapped = runSchema(StorefrontCartSchema, mapRawCart(raw), "fetchCart");
   saveCachedCartSnapshot(mapped);
   return mapped;
 }
@@ -360,7 +374,7 @@ export async function addCartItem(productId: number, quantity = 1): Promise<Stor
       method: "POST",
       body: JSON.stringify({ id: productId, quantity }),
     });
-    const mapped = mapRawCart(raw);
+    const mapped = runSchema(StorefrontCartSchema, mapRawCart(raw), "addCartItem");
     saveCachedCartSnapshot(mapped);
     return mapped;
   } catch (error) {
@@ -393,7 +407,7 @@ export async function addVariableCartItem(
         ...(sanitizedVariation.length > 0 ? { variation: sanitizedVariation } : {}),
       }),
     });
-    const mapped = mapRawCart(raw);
+    const mapped = runSchema(StorefrontCartSchema, mapRawCart(raw), "addVariableCartItem");
     saveCachedCartSnapshot(mapped);
     return mapped;
   } catch (error) {
@@ -413,7 +427,7 @@ export async function updateCartItemQuantity(key: string, quantity: number): Pro
       method: "POST",
       body: JSON.stringify({ key, quantity: targetQuantity }),
     });
-    const mapped = mapRawCart(raw);
+    const mapped = runSchema(StorefrontCartSchema, mapRawCart(raw), "updateCartItemQuantity");
     saveCachedCartSnapshot(mapped);
     return mapped;
   } catch (error) {
@@ -432,7 +446,7 @@ export async function removeCartItem(key: string): Promise<StorefrontCart> {
       method: "POST",
       body: JSON.stringify({ key }),
     });
-    const mapped = mapRawCart(raw);
+    const mapped = runSchema(StorefrontCartSchema, mapRawCart(raw), "removeCartItem");
     saveCachedCartSnapshot(mapped);
     return mapped;
   } catch (error) {
@@ -445,7 +459,7 @@ export async function removeCartItem(key: string): Promise<StorefrontCart> {
 }
 
 export async function lookupGuestOrder(orderNumber: string, email: string): Promise<StorefrontOrderLookupResult> {
-  return wooFetch<StorefrontOrderLookupResult>(
+  return wooFetch(
     "/api/orders/lookup",
     {
       method: "POST",
@@ -458,6 +472,7 @@ export async function lookupGuestOrder(orderNumber: string, email: string): Prom
     },
     {
       context: "POST /api/orders/lookup",
+      schema: StorefrontOrderLookupResultSchema,
       onUpstreamError: (payload, response) => {
         throw new WooClientError(
           extractErrorMessage(payload) ?? "Order lookup failed.",
@@ -469,7 +484,7 @@ export async function lookupGuestOrder(orderNumber: string, email: string): Prom
 }
 
 export async function fetchProductReviews(productId: number): Promise<StorefrontProductReviewsResponse> {
-  return wooFetch<StorefrontProductReviewsResponse>(
+  return wooFetch(
     `/api/products/reviews?productId=${encodeURIComponent(String(productId))}`,
     {
       method: "GET",
@@ -478,6 +493,7 @@ export async function fetchProductReviews(productId: number): Promise<Storefront
     },
     {
       context: `GET /api/products/reviews?productId=${productId}`,
+      schema: StorefrontProductReviewsResponseSchema,
       onUpstreamError: (payload, response) => {
         throw new WooClientError(
           extractErrorMessage(payload) ?? "Unable to load reviews.",
@@ -509,11 +525,7 @@ export async function submitProductReview(input: {
     return message;
   };
 
-  const payload = await wooFetch<{
-    ok?: boolean;
-    pendingModeration?: boolean;
-    message?: string;
-  }>(
+  const payload = await wooFetch(
     "/api/products/reviews",
     {
       method: "POST",
@@ -526,6 +538,7 @@ export async function submitProductReview(input: {
     },
     {
       context: "POST /api/products/reviews",
+      schema: ReviewSubmitResponseSchema,
       onUpstreamError: (errPayload, response) => {
         throw new WooClientError(
           normalizeReviewMessage(extractErrorMessage(errPayload) ?? undefined, "Unable to submit review."),

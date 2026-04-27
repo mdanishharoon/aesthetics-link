@@ -1,18 +1,26 @@
 "use client";
 
-import type {
-  AuthDashboardResponse,
-  AuthOrdersResponse,
-  AuthResponse,
-  LoginPayload,
-  RegisterPayload,
-  RequestEmailVerificationPayload,
-  RequestPasswordResetPayload,
-  ResetPasswordPayload,
-  StorefrontOrderConfirmation,
-  UpdateProfilePayload,
-  VerifyEmailPayload,
-  WholesalePricesResponse,
+import { z } from "zod";
+import type { ZodType } from "zod";
+
+import {
+  AuthDashboardResponseSchema,
+  AuthOrdersResponseSchema,
+  AuthResponseSchema,
+  StorefrontOrderConfirmationSchema,
+  WholesalePricesResponseSchema,
+  type AuthDashboardResponse,
+  type AuthOrdersResponse,
+  type AuthResponse,
+  type LoginPayload,
+  type RegisterPayload,
+  type RequestEmailVerificationPayload,
+  type RequestPasswordResetPayload,
+  type ResetPasswordPayload,
+  type StorefrontOrderConfirmation,
+  type UpdateProfilePayload,
+  type VerifyEmailPayload,
+  type WholesalePricesResponse,
 } from "@/types";
 import {
   WooClientError,
@@ -21,6 +29,8 @@ import {
   wooFetch,
 } from "@/lib/woo-client";
 import { clearCachedCartSnapshot } from "@/lib/storefront/client";
+
+const LogoutResponseSchema = z.object({ ok: z.literal(true) });
 
 export class AuthApiError extends Error {
   readonly status: number;
@@ -34,9 +44,13 @@ export class AuthApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  schema: ZodType<T>,
+  init?: RequestInit,
+): Promise<T> {
   try {
-    return await wooFetch<T>(
+    return await wooFetch(
       path,
       {
         cache: "no-store",
@@ -49,6 +63,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       },
       {
         context: `${init?.method ?? "GET"} ${path}`,
+        schema,
         onUpstreamError: (payload, response) => {
           throw new AuthApiError(
             extractErrorMessage(payload) ?? `Auth request failed (${response.status})`,
@@ -70,67 +85,70 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/login", {
+  return request("/api/auth/login", AuthResponseSchema, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function register(payload: RegisterPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/register", {
+  return request("/api/auth/register", AuthResponseSchema, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function requestEmailVerification(payload: RequestEmailVerificationPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/request-email-verification", {
+  return request("/api/auth/request-email-verification", AuthResponseSchema, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function verifyEmail(payload: VerifyEmailPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/verify-email", {
+  return request("/api/auth/verify-email", AuthResponseSchema, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function requestPasswordReset(payload: RequestPasswordResetPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/request-password-reset", {
+  return request("/api/auth/request-password-reset", AuthResponseSchema, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function resetPassword(payload: ResetPasswordPayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/reset-password", {
+  return request("/api/auth/reset-password", AuthResponseSchema, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function getMe(): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/me");
+  return request("/api/auth/me", AuthResponseSchema);
 }
 
 export async function getAccountDashboard(limit = 12): Promise<AuthDashboardResponse> {
   const normalized = Number.isFinite(limit) ? Math.max(1, Math.min(24, Math.floor(limit))) : 12;
-  return request<AuthDashboardResponse>(`/api/auth/dashboard?limit=${normalized}`);
+  return request(`/api/auth/dashboard?limit=${normalized}`, AuthDashboardResponseSchema);
 }
 
 export async function getOrders(limit = 12): Promise<AuthOrdersResponse> {
   const normalized = Number.isFinite(limit) ? Math.max(1, Math.min(24, Math.floor(limit))) : 12;
-  return request<AuthOrdersResponse>(`/api/auth/orders?limit=${normalized}`);
+  return request(`/api/auth/orders?limit=${normalized}`, AuthOrdersResponseSchema);
 }
 
 export async function getOrderDetail(orderId: number): Promise<StorefrontOrderConfirmation> {
-  return request<StorefrontOrderConfirmation>(`/api/auth/order?orderId=${encodeURIComponent(String(orderId))}`);
+  return request(
+    `/api/auth/order?orderId=${encodeURIComponent(String(orderId))}`,
+    StorefrontOrderConfirmationSchema,
+  );
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<AuthResponse> {
-  return request<AuthResponse>("/api/auth/profile", {
+  return request("/api/auth/profile", AuthResponseSchema, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -138,7 +156,7 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Auth
 
 export async function logout(): Promise<{ ok: true }> {
   try {
-    return await request<{ ok: true }>("/api/auth/logout", {
+    return await request("/api/auth/logout", LogoutResponseSchema, {
       method: "POST",
     });
   } finally {
@@ -153,5 +171,5 @@ export async function getWholesalePrices(ids: number[]): Promise<WholesalePrices
     .filter((value) => Number.isInteger(value) && value > 0)
     .slice(0, 100);
   const query = normalized.length > 0 ? `?ids=${encodeURIComponent(normalized.join(","))}` : "";
-  return request<WholesalePricesResponse>(`/api/auth/wholesale-prices${query}`);
+  return request(`/api/auth/wholesale-prices${query}`, WholesalePricesResponseSchema);
 }
