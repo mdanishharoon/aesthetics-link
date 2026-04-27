@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { ZodType } from "zod";
 
 import { getWooStoreBaseUrl } from "@/lib/storefront/config";
+import { parseJsonBody } from "@/lib/api-validate";
+import {
+  LoginPayloadSchema,
+  RegisterPayloadSchema,
+  RequestEmailVerificationPayloadSchema,
+  RequestPasswordResetPayloadSchema,
+  ResetPasswordPayloadSchema,
+  UpdateProfilePayloadSchema,
+  VerifyEmailPayloadSchema,
+} from "@/types";
 
 const SESSION_COOKIE = "al_session_token";
 const WOO_CART_TOKEN_COOKIE = "woo_cart_token";
@@ -22,6 +33,17 @@ type Action =
   | "reset-password"
   | "wholesale-prices";
 type RouteContextParams = { params: Promise<{ action?: string }> };
+
+const POST_ACTION_SCHEMAS: Record<string, ZodType<unknown> | null> = {
+  login: LoginPayloadSchema,
+  register: RegisterPayloadSchema,
+  "request-email-verification": RequestEmailVerificationPayloadSchema,
+  "verify-email": VerifyEmailPayloadSchema,
+  "request-password-reset": RequestPasswordResetPayloadSchema,
+  "reset-password": ResetPasswordPayloadSchema,
+  profile: UpdateProfilePayloadSchema,
+  logout: null,
+};
 
 function isAction(value: string | undefined): value is Action {
   return (
@@ -97,6 +119,19 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
     return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
   }
 
+  // Validate POST body against the action-specific schema (logout takes no body).
+  let validatedBody: string | undefined;
+  if (req.method === "POST" && maybeAction in POST_ACTION_SCHEMAS) {
+    const schema = POST_ACTION_SCHEMAS[maybeAction];
+    if (schema) {
+      const parsed = await parseJsonBody(req, schema);
+      if (!parsed.ok) {
+        return parsed.response;
+      }
+      validatedBody = JSON.stringify(parsed.data);
+    }
+  }
+
   const upstreamUrl = new URL(`${AUTH_ENDPOINT_PREFIX}/${maybeAction}`, baseUrl);
   if (req.nextUrl.search) {
     upstreamUrl.search = req.nextUrl.search;
@@ -110,9 +145,8 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
     headers.set("Authorization", `Bearer ${sessionToken}`);
   }
 
-  const body = req.method === "GET" ? undefined : await req.text();
-  if (body) {
-    headers.set("Content-Type", req.headers.get("content-type") ?? "application/json");
+  if (validatedBody) {
+    headers.set("Content-Type", "application/json");
   }
 
   let upstream: Response;
@@ -120,7 +154,7 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
     upstream = await fetch(upstreamUrl.toString(), {
       method: req.method,
       headers,
-      body,
+      body: validatedBody,
       cache: "no-store",
     });
   } catch {

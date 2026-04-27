@@ -1,17 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getWooStoreBaseUrl } from "@/lib/storefront/config";
+import { parseJsonBody } from "@/lib/api-validate";
+import { ReviewSubmitPayloadSchema } from "@/types";
 
 const SESSION_COOKIE = "al_session_token";
-
-type ReviewSubmitPayload = {
-  productId?: number;
-  rating?: number;
-  title?: string;
-  body?: string;
-  author?: string;
-  email?: string;
-};
 
 function buildAuthHeaders(request: NextRequest): HeadersInit {
   const headers: HeadersInit = {
@@ -65,22 +58,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const body = (await request.json().catch(() => null)) as ReviewSubmitPayload | null;
-  const productId = Number(body?.productId ?? 0);
-  const rating = Number(body?.rating ?? 0);
-  const title = typeof body?.title === "string" ? body.title.trim() : "";
-  const reviewBody = typeof body?.body === "string" ? body.body.trim() : "";
-  const author = typeof body?.author === "string" ? body.author.trim() : "";
-  const email = typeof body?.email === "string" ? body.email.trim() : "";
-
-  if (!Number.isInteger(productId) || productId <= 0) {
-    return NextResponse.json({ message: "A valid productId is required." }, { status: 400 });
-  }
-  if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-    return NextResponse.json({ message: "A valid rating (1-5) is required." }, { status: 400 });
-  }
-  if (!title || !reviewBody) {
-    return NextResponse.json({ message: "Review title and content are required." }, { status: 400 });
+  const parsed = await parseJsonBody(request, ReviewSubmitPayloadSchema);
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const baseUrl = getWooStoreBaseUrl();
@@ -95,14 +75,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     upstream = await fetch(upstreamUrl.toString(), {
       method: "POST",
       headers: buildAuthHeaders(request),
-      body: JSON.stringify({
-        productId,
-        rating,
-        title,
-        body: reviewBody,
-        author,
-        email,
-      }),
+      body: JSON.stringify(parsed.data),
       cache: "no-store",
     });
   } catch {
@@ -120,4 +93,3 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     headers: { "Cache-Control": "no-store" },
   });
 }
-

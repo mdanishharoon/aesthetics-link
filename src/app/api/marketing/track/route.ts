@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getWooStoreBaseUrl } from "@/lib/storefront/config";
+import { parseJsonBody } from "@/lib/api-validate";
+import { MarketingTrackPayloadSchema } from "@/types";
 
 const SESSION_COOKIE = "al_session_token";
 
-type MarketingTrackPayload = {
-  event?: string;
-  email?: string;
-  source?: string;
-  customerType?: string;
-  region?: string;
-  payload?: Record<string, unknown>;
-};
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const body = (await request.json().catch(() => null)) as MarketingTrackPayload | null;
-  const event = typeof body?.event === "string" ? body.event.trim() : "";
-
-  if (!event) {
-    return NextResponse.json({ message: "Event is required." }, { status: 400 });
+  const parsed = await parseJsonBody(request, MarketingTrackPayloadSchema);
+  if (!parsed.ok) {
+    return parsed.response;
   }
 
   const baseUrl = getWooStoreBaseUrl();
@@ -43,7 +34,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     upstream = await fetch(upstreamUrl.toString(), {
       method: "POST",
       headers,
-      body: JSON.stringify(body ?? {}),
+      body: JSON.stringify(parsed.data),
       cache: "no-store",
     });
   } catch {
