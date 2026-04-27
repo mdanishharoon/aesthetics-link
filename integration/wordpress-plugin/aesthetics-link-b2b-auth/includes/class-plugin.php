@@ -99,8 +99,10 @@ final class AL_B2B_Plugin {
 		// Auth REST routes (always on - auth is core).
 		add_action('rest_api_init', array($this->auth_controller, 'register_routes'));
 
-		// Sub-phases 3d.2-3e register feature modules onto $this->modules here.
-		// e.g. $this->modules->register(new AL_B2B_Module_Wholesale_Pricing(...));
+		// Feature modules. Each one is opt-in via config['modules']; the
+		// registry only calls register() on those whose flag is true AND
+		// whose own is_enabled() returns true.
+		$this->modules->register(new AL_B2B_Module_Wholesale_Pricing());
 
 		$this->modules->boot_enabled();
 		$this->loader->run();

@@ -49,6 +49,7 @@ require_once __DIR__ . '/includes/auth/class-jwt-strategy.php';
 require_once __DIR__ . '/includes/api/class-base-rest-controller.php';
 require_once __DIR__ . '/includes/api/class-auth-controller.php';
 require_once __DIR__ . '/includes/services/class-webhook-dispatcher.php';
+require_once __DIR__ . '/includes/modules/class-module-wholesale-pricing.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
@@ -64,20 +65,7 @@ add_action(AL_B2B_INACTIVE_EVENT, 'al_b2b_mark_inactive_contacts');
 add_filter('allowed_redirect_hosts', 'al_b2b_allow_frontend_redirect_host');
 add_filter('woocommerce_get_return_url', 'al_b2b_override_return_url', 10, 2);
 add_filter('determine_current_user', 'al_b2b_determine_current_user_for_store_api', 25);
-add_filter('woocommerce_product_get_price', 'al_b2b_filter_wholesale_price', 99, 2);
-add_filter('woocommerce_product_get_regular_price', 'al_b2b_filter_wholesale_regular_price', 99, 2);
-add_filter('woocommerce_product_get_sale_price', 'al_b2b_filter_wholesale_sale_price', 99, 2);
-add_filter('woocommerce_product_variation_get_price', 'al_b2b_filter_wholesale_price', 99, 2);
-add_filter('woocommerce_product_variation_get_regular_price', 'al_b2b_filter_wholesale_regular_price', 99, 2);
-add_filter('woocommerce_product_variation_get_sale_price', 'al_b2b_filter_wholesale_sale_price', 99, 2);
-add_action('woocommerce_product_options_pricing', 'al_b2b_render_product_wholesale_fields');
-add_action('woocommerce_process_product_meta', 'al_b2b_save_product_wholesale_fields');
-add_action('woocommerce_variation_options_pricing', 'al_b2b_render_variation_wholesale_fields', 10, 3);
-add_action('woocommerce_save_product_variation', 'al_b2b_save_variation_wholesale_fields', 10, 2);
-add_action('product_cat_add_form_fields', 'al_b2b_render_product_cat_wholesale_add_fields');
-add_action('product_cat_edit_form_fields', 'al_b2b_render_product_cat_wholesale_edit_fields', 10, 1);
-add_action('created_product_cat', 'al_b2b_save_product_cat_wholesale_fields', 10, 1);
-add_action('edited_product_cat', 'al_b2b_save_product_cat_wholesale_fields', 10, 1);
+// Wholesale pricing hooks moved into AL_B2B_Module_Wholesale_Pricing (3d.2).
 add_filter('woocommerce_defer_transactional_emails', '__return_true');
 add_action('template_redirect', 'al_b2b_lock_checkout_subdomain', 1);
 
@@ -3354,15 +3342,9 @@ function al_b2b_render_marketing_reviews_page() {
 }
 
 function al_b2b_register_routes() {
-	// Auth routes (12) registered by AL_B2B_Auth_Controller via its own
-	// rest_api_init callback. /auth/wholesale-prices migrates to the
-	// Wholesale_Pricing module in 3d.2.
-
-	register_rest_route('aesthetics-link/v1', '/auth/wholesale-prices', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_get_wholesale_prices',
-		'permission_callback' => '__return_true',
-	));
+	// Routes migrated into modules:
+	//   /auth/* (12 routes)         -> AL_B2B_Auth_Controller (3d.1)
+	//   /auth/wholesale-prices      -> AL_B2B_Module_Wholesale_Pricing (3d.2)
 
 	register_rest_route('aesthetics-link/v1', '/orders/lookup', array(
 		'methods' => 'POST',
