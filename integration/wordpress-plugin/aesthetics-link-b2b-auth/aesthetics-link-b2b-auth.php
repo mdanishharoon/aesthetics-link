@@ -51,6 +51,7 @@ require_once __DIR__ . '/includes/api/class-auth-controller.php';
 require_once __DIR__ . '/includes/services/class-webhook-dispatcher.php';
 require_once __DIR__ . '/includes/modules/class-module-wholesale-pricing.php';
 require_once __DIR__ . '/includes/modules/class-module-membership-approval.php';
+require_once __DIR__ . '/includes/modules/class-module-newsletter.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
@@ -65,7 +66,7 @@ register_deactivation_hook(__FILE__, 'al_b2b_deactivate');
 add_action('admin_init', 'al_b2b_handle_admin_actions');
 add_action('rest_api_init', 'al_b2b_register_routes');
 add_action(AL_B2B_CLEANUP_EVENT, 'al_b2b_cleanup_expired_sessions');
-add_action(AL_B2B_INACTIVE_EVENT, 'al_b2b_mark_inactive_contacts');
+// AL_B2B_INACTIVE_EVENT now hooked by AL_B2B_Module_Newsletter (3d.4).
 add_filter('allowed_redirect_hosts', 'al_b2b_allow_frontend_redirect_host');
 add_filter('woocommerce_get_return_url', 'al_b2b_override_return_url', 10, 2);
 add_filter('determine_current_user', 'al_b2b_determine_current_user_for_store_api', 25);
@@ -3346,9 +3347,16 @@ function al_b2b_render_marketing_reviews_page() {
 }
 
 function al_b2b_register_routes() {
-	// Routes migrated into modules:
-	//   /auth/* (12 routes)         -> AL_B2B_Auth_Controller (3d.1)
+	// All routes are now owned by feature modules / controllers:
+	//   /auth/* (12)                -> AL_B2B_Auth_Controller (3d.1)
 	//   /auth/wholesale-prices      -> AL_B2B_Module_Wholesale_Pricing (3d.2)
+	//   /newsletter/subscribe       -> AL_B2B_Module_Newsletter (3d.4)
+	//   /newsletter/webhook         -> AL_B2B_Module_Newsletter (3d.4)
+	//   /marketing/track            -> AL_B2B_Module_Marketing_Events (3d.5)
+	//   /products/reviews (GET+POST) -> AL_B2B_Module_Reviews (3d.6)
+	//   /orders/lookup              -> AL_B2B_Module_Order_Receipt (3d.7)
+	//   /checkout/bridge            -> AL_B2B_Module_Checkout_Bridge (3d.7)
+	//   /orders/confirmation        -> AL_B2B_Module_Order_Receipt (3d.7)
 
 	register_rest_route('aesthetics-link/v1', '/orders/lookup', array(
 		'methods' => 'POST',
@@ -3365,18 +3373,6 @@ function al_b2b_register_routes() {
 	register_rest_route('aesthetics-link/v1', '/orders/confirmation', array(
 		'methods' => 'GET',
 		'callback' => 'al_b2b_get_order_confirmation',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/newsletter/subscribe', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_subscribe_newsletter',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/newsletter/webhook', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_handle_brevo_webhook',
 		'permission_callback' => '__return_true',
 	));
 
