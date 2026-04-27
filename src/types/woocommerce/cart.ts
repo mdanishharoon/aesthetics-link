@@ -37,13 +37,13 @@ export const StorefrontCheckoutAddressSchema = z.object({
   first_name: z.string(),
   last_name: z.string(),
   address_1: z.string(),
-  address_2: z.string().optional(),
+  address_2: z.string().nullable().optional(),
   city: z.string(),
   state: z.string(),
   postcode: z.string(),
   country: z.string(),
   email: z.string(),
-  phone: z.string().optional(),
+  phone: z.string().nullable().optional(),
 });
 export type StorefrontCheckoutAddress = z.infer<typeof StorefrontCheckoutAddressSchema>;
 

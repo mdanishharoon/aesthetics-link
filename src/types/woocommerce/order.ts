@@ -9,8 +9,8 @@ export const StorefrontOrderAddressSchema = z.object({
   state: z.string(),
   postcode: z.string(),
   country: z.string(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
   lines: z.array(z.string()),
 });
 export type StorefrontOrderAddress = z.infer<typeof StorefrontOrderAddressSchema>;

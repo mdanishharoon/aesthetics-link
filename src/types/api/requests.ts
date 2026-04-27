@@ -122,8 +122,8 @@ export const ReviewSubmitPayloadSchema = z
     rating: z.number().int().min(1).max(5),
     title: NonEmptyTrimmed.max(150),
     body: NonEmptyTrimmed.max(5000),
-    author: TrimmedString.max(150).optional().default(""),
-    email: z.union([z.literal(""), EmailField]).optional().default(""),
+    author: NonEmptyTrimmed.max(150),
+    email: EmailField,
   })
   .strict();
 export type ReviewSubmitPayload = z.infer<typeof ReviewSubmitPayloadSchema>;
