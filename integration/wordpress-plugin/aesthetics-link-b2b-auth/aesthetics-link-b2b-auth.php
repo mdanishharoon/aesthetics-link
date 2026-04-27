@@ -35,14 +35,18 @@ defined('AL_B2B_RESET_TTL')                  || define('AL_B2B_RESET_TTL',      
 defined('AL_B2B_SESSION_TTL')                || define('AL_B2B_SESSION_TTL',                30 * DAY_IN_SECONDS);
 
 /*
- * Load OOP scaffolding (Phase 3a). The plugin's behaviour is still driven by
- * the procedural code below; the scaffolding boots a no-op orchestrator that
- * subsequent sub-phases progressively migrate functionality into.
+ * Load OOP scaffolding. The procedural code below still owns most hook
+ * registrations; sub-phases progressively migrate functionality into the
+ * orchestrator. As of Phase 3b the auth strategy is class-driven and the
+ * remaining global auth functions are thin delegates.
  */
 require_once __DIR__ . '/includes/interface-module.php';
 require_once __DIR__ . '/includes/interface-auth-strategy.php';
 require_once __DIR__ . '/includes/class-loader.php';
 require_once __DIR__ . '/includes/class-modules.php';
+require_once __DIR__ . '/includes/auth/class-opaque-session-strategy.php';
+require_once __DIR__ . '/includes/auth/class-jwt-strategy.php';
+require_once __DIR__ . '/includes/api/class-base-rest-controller.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
@@ -214,11 +218,7 @@ function al_b2b_create_tables() {
 }
 
 function al_b2b_cleanup_expired_sessions() {
-	global $wpdb;
-
-	$table = al_b2b_get_sessions_table_name();
-	$now = gmdate('Y-m-d H:i:s');
-	$wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE expires_at <= %s", $now)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+	AL_B2B_Plugin::instance()->get_auth_strategy()->cleanup_expired();
 }
 
 function al_b2b_get_request_ip() {
@@ -868,16 +868,7 @@ function al_b2b_get_authorization_header_value() {
 }
 
 function al_b2b_parse_bearer_token_from_header($header_value) {
-	$header_value = trim((string) $header_value);
-	if (!$header_value) {
-		return '';
-	}
-
-	if (!preg_match('/Bearer\s+(.+)$/i', $header_value, $matches)) {
-		return '';
-	}
-
-	return trim((string) $matches[1]);
+	return AL_B2B_Base_REST_Controller::extract_bearer_from_header((string) $header_value);
 }
 
 function al_b2b_request_targets_store_api() {
@@ -904,16 +895,12 @@ function al_b2b_determine_current_user_for_store_api($current_user_id) {
 	}
 
 	$token = al_b2b_parse_bearer_token_from_header(al_b2b_get_authorization_header_value());
-	if (!$token) {
+	if ($token === '') {
 		return $current_user_id;
 	}
 
-	$user = al_b2b_get_user_from_token($token);
-	if (!$user || !isset($user->ID)) {
-		return $current_user_id;
-	}
-
-	return (int) $user->ID;
+	$resolved = AL_B2B_Plugin::instance()->get_auth_strategy()->resolve_user_id_from_token($token);
+	return $resolved > 0 ? $resolved : $current_user_id;
 }
 
 function al_b2b_parse_decimal($value) {
@@ -1471,17 +1458,8 @@ function al_b2b_save_product_cat_wholesale_fields($term_id) {
 }
 
 function al_b2b_parse_bearer_token($request) {
-	$header = $request->get_header('authorization');
-	if (!$header) {
-		return null;
-	}
-
-	if (!preg_match('/Bearer\s+(.+)$/i', $header, $matches)) {
-		return null;
-	}
-
-	$token = trim($matches[1]);
-	return $token ? $token : null;
+	$token = AL_B2B_Base_REST_Controller::extract_bearer_from_request($request);
+	return $token === '' ? null : $token;
 }
 
 /**
@@ -1504,99 +1482,30 @@ function al_b2b_authenticate_request($request) {
 }
 
 function al_b2b_issue_session($user_id) {
-	global $wpdb;
-
-	$user_id = (int) $user_id;
-	if ($user_id <= 0) {
-		return null;
-	}
-
-	try {
-		$token = bin2hex(random_bytes(32));
-	} catch (Exception $exception) {
-		$token = wp_generate_password(64, false, false);
-	}
-
-	$hash = hash_hmac('sha256', $token, wp_salt('auth'));
-	$table = al_b2b_get_sessions_table_name();
-	$expires_at = gmdate('Y-m-d H:i:s', time() + AL_B2B_SESSION_TTL);
-
-	$inserted = $wpdb->insert(
-		$table,
-		array(
-			'token_hash' => $hash,
-			'user_id' => $user_id,
-			'expires_at' => $expires_at,
-		),
-		array('%s', '%d', '%s')
-	);
-
-	if (!$inserted) {
-		return null;
-	}
-
-	return $token;
+	return AL_B2B_Plugin::instance()->get_auth_strategy()->issue_session((int) $user_id);
 }
 
 function al_b2b_delete_session($token) {
-	global $wpdb;
-
 	if (!$token) {
 		return;
 	}
-
-	$table = al_b2b_get_sessions_table_name();
-	$hash = hash_hmac('sha256', $token, wp_salt('auth'));
-
-	$wpdb->delete($table, array('token_hash' => $hash), array('%s')); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+	AL_B2B_Plugin::instance()->get_auth_strategy()->revoke_session((string) $token);
 }
 
 function al_b2b_delete_sessions_for_user($user_id) {
-	global $wpdb;
-
-	$user_id = (int) $user_id;
-	if ($user_id <= 0) {
-		return;
-	}
-
-	$table = al_b2b_get_sessions_table_name();
-	$wpdb->delete($table, array('user_id' => $user_id), array('%d')); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+	AL_B2B_Plugin::instance()->get_auth_strategy()->revoke_all_sessions((int) $user_id);
 }
 
 function al_b2b_get_user_from_token($token) {
-	global $wpdb;
-
 	if (!$token) {
 		return null;
 	}
-
-	$table = al_b2b_get_sessions_table_name();
-	$hash = hash_hmac('sha256', $token, wp_salt('auth'));
-
-	$row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->prepare(
-			"SELECT user_id, expires_at FROM {$table} WHERE token_hash = %s LIMIT 1",
-			$hash
-		)
-	);
-
-	if (!$row || !isset($row->user_id, $row->expires_at)) {
+	$user_id = AL_B2B_Plugin::instance()->get_auth_strategy()->resolve_user_id_from_token((string) $token);
+	if ($user_id <= 0) {
 		return null;
 	}
-
-	$expires_ts = strtotime((string) $row->expires_at . ' UTC');
-	if (!$expires_ts || $expires_ts < time()) {
-		al_b2b_delete_session($token);
-		return null;
-	}
-
-	$user = get_user_by('id', (int) $row->user_id);
-	if (!$user) {
-		al_b2b_delete_session($token);
-		return null;
-	}
-
-	return $user;
+	$user = get_user_by('id', $user_id);
+	return $user instanceof WP_User ? $user : null;
 }
 
 function al_b2b_decode_cart_token_payload($cart_token) {
