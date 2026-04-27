@@ -105,6 +105,10 @@ final class AL_B2B_Plugin {
 		$this->modules->register(new AL_B2B_Module_Wholesale_Pricing());
 		$this->modules->register(new AL_B2B_Module_Membership_Approval());
 		$this->modules->register(new AL_B2B_Module_Newsletter());
+		$this->modules->register(new AL_B2B_Module_Marketing_Events());
+		$this->modules->register(new AL_B2B_Module_Reviews());
+		$this->modules->register(new AL_B2B_Module_Checkout_Bridge());
+		$this->modules->register(new AL_B2B_Module_Order_Receipt());
 
 		$this->modules->boot_enabled();
 		$this->loader->run();

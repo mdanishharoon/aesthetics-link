@@ -52,6 +52,10 @@ require_once __DIR__ . '/includes/services/class-webhook-dispatcher.php';
 require_once __DIR__ . '/includes/modules/class-module-wholesale-pricing.php';
 require_once __DIR__ . '/includes/modules/class-module-membership-approval.php';
 require_once __DIR__ . '/includes/modules/class-module-newsletter.php';
+require_once __DIR__ . '/includes/modules/class-module-marketing-events.php';
+require_once __DIR__ . '/includes/modules/class-module-reviews.php';
+require_once __DIR__ . '/includes/modules/class-module-checkout-bridge.php';
+require_once __DIR__ . '/includes/modules/class-module-order-receipt.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
@@ -64,15 +68,17 @@ register_deactivation_hook(__FILE__, 'al_b2b_deactivate');
 // stays globally hooked because it dispatches actions for both modules and
 // menu visibility already gates UI access.
 add_action('admin_init', 'al_b2b_handle_admin_actions');
-add_action('rest_api_init', 'al_b2b_register_routes');
+// rest_api_init handlers registered per-controller / per-module:
+//   AL_B2B_Auth_Controller, AL_B2B_Module_Wholesale_Pricing, _Newsletter,
+//   _Marketing_Events, _Reviews, _Checkout_Bridge, _Order_Receipt.
 add_action(AL_B2B_CLEANUP_EVENT, 'al_b2b_cleanup_expired_sessions');
 // AL_B2B_INACTIVE_EVENT now hooked by AL_B2B_Module_Newsletter (3d.4).
-add_filter('allowed_redirect_hosts', 'al_b2b_allow_frontend_redirect_host');
-add_filter('woocommerce_get_return_url', 'al_b2b_override_return_url', 10, 2);
+// allowed_redirect_hosts and woocommerce_get_return_url moved into
+// AL_B2B_Module_Order_Receipt (3d.7). template_redirect for the checkout
+// subdomain lock moved into AL_B2B_Module_Checkout_Bridge (3d.7). Wholesale
+// pricing hooks moved into AL_B2B_Module_Wholesale_Pricing (3d.2).
 add_filter('determine_current_user', 'al_b2b_determine_current_user_for_store_api', 25);
-// Wholesale pricing hooks moved into AL_B2B_Module_Wholesale_Pricing (3d.2).
 add_filter('woocommerce_defer_transactional_emails', '__return_true');
-add_action('template_redirect', 'al_b2b_lock_checkout_subdomain', 1);
 
 
 function al_b2b_activate() {
@@ -3346,54 +3352,15 @@ function al_b2b_render_marketing_reviews_page() {
 	<?php
 }
 
-function al_b2b_register_routes() {
-	// All routes are now owned by feature modules / controllers:
-	//   /auth/* (12)                -> AL_B2B_Auth_Controller (3d.1)
-	//   /auth/wholesale-prices      -> AL_B2B_Module_Wholesale_Pricing (3d.2)
-	//   /newsletter/subscribe       -> AL_B2B_Module_Newsletter (3d.4)
-	//   /newsletter/webhook         -> AL_B2B_Module_Newsletter (3d.4)
-	//   /marketing/track            -> AL_B2B_Module_Marketing_Events (3d.5)
-	//   /products/reviews (GET+POST) -> AL_B2B_Module_Reviews (3d.6)
-	//   /orders/lookup              -> AL_B2B_Module_Order_Receipt (3d.7)
-	//   /checkout/bridge            -> AL_B2B_Module_Checkout_Bridge (3d.7)
-	//   /orders/confirmation        -> AL_B2B_Module_Order_Receipt (3d.7)
-
-	register_rest_route('aesthetics-link/v1', '/orders/lookup', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_lookup_guest_order',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/checkout/bridge', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_rest_checkout_bridge',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/orders/confirmation', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_get_order_confirmation',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/marketing/track', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_track_marketing_event',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/products/reviews', array(
-		'methods' => 'GET',
-		'callback' => 'al_b2b_get_product_reviews',
-		'permission_callback' => '__return_true',
-	));
-
-	register_rest_route('aesthetics-link/v1', '/products/reviews', array(
-		'methods' => 'POST',
-		'callback' => 'al_b2b_submit_product_review',
-		'permission_callback' => '__return_true',
-	));
-}
+// al_b2b_register_routes() removed: every route now lives in a controller
+// or feature module that registers its own rest_api_init callback.
+//   /auth/* (12)                  -> AL_B2B_Auth_Controller            (3d.1)
+//   /auth/wholesale-prices        -> AL_B2B_Module_Wholesale_Pricing   (3d.2)
+//   /newsletter/subscribe|webhook -> AL_B2B_Module_Newsletter          (3d.4)
+//   /marketing/track              -> AL_B2B_Module_Marketing_Events    (3d.5)
+//   /products/reviews (GET|POST)  -> AL_B2B_Module_Reviews             (3d.6)
+//   /checkout/bridge              -> AL_B2B_Module_Checkout_Bridge     (3d.7)
+//   /orders/lookup|confirmation   -> AL_B2B_Module_Order_Receipt       (3d.7)
 
 function al_b2b_register_user($request) {
 	al_b2b_ensure_roles();
