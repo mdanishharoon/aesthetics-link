@@ -52,7 +52,10 @@ function repeatProducts(
 
   const out: StorefrontCatalogProduct[] = [];
   for (let i = 0; i < count; i += 1) {
-    out.push(source[i % source.length]);
+    const item = source[i % source.length];
+    if (item) {
+      out.push(item);
+    }
   }
   return out;
 }

@@ -11,7 +11,7 @@ import {
   type StorefrontProductReviewsResponse,
 } from "@/types";
 import { decodeEntities } from "@/lib/utils/text";
-import { ACCENT_COLORS } from "@/lib/storefront/constants";
+import { pickAccentColor } from "@/lib/storefront/constants";
 import {
   WooClientError,
   extractErrorMessage,
@@ -335,7 +335,7 @@ function mapRawCart(rawCart: RawCart): StorefrontCart {
       variations: parseCartItemVariations(item.variation),
       image: item.images?.[0]?.src ?? "/images/offer.jpg",
       imageAlt: item.images?.[0]?.alt ?? name,
-      accentBg: ACCENT_COLORS[index % ACCENT_COLORS.length],
+      accentBg: pickAccentColor(index),
     };
   });
 

@@ -12,10 +12,10 @@ import { getProductBySlug } from "@/data/product-enrichment";
 import { getWooStoreBaseUrl } from "@/lib/storefront/config";
 import { decodeEntities } from "@/lib/utils/text";
 import {
-  ACCENT_COLORS,
   DEFAULT_NAV_TOP,
   DEFAULT_NAV_CONCERNS,
   DEFAULT_NAV_BRANDS,
+  pickAccentColor,
 } from "@/lib/storefront/constants";
 import type {
   StorefrontBaseProduct,
@@ -160,8 +160,9 @@ function mapGQLToVariableConfig(product: GQLVariableProduct): StorefrontVariable
     }
   }
   for (const attr of attributes) {
-    if (!defaults[attr.id] && attr.options.length > 0) {
-      defaults[attr.id] = attr.options[0].value;
+    const firstOption = attr.options[0];
+    if (!defaults[attr.id] && firstOption) {
+      defaults[attr.id] = firstOption.value;
     }
   }
 
@@ -245,7 +246,7 @@ function makeDefaultProduct(
       "Maintain consistent use for best visible results.",
     ],
     images,
-    accentBg: ACCENT_COLORS[id % ACCENT_COLORS.length],
+    accentBg: pickAccentColor(id),
   };
 }
 
@@ -302,7 +303,7 @@ function mapGQLToCatalogProduct(product: GQLProduct, index: number): StorefrontC
     stockMessage: inStock ? null : "Out of stock",
     image: product.image?.sourceUrl ?? "/images/offer.jpg",
     imageAlt: product.image?.altText ?? product.name,
-    accentBg: enrichment?.accentBg ?? ACCENT_COLORS[index % ACCENT_COLORS.length],
+    accentBg: enrichment?.accentBg ?? pickAccentColor(index),
   };
 }
 
@@ -436,13 +437,17 @@ function normalizeWooTerm(input: unknown): WooProductBrand | null {
     return undefined;
   })();
 
-  return {
-    id: typeof term.id === "number" ? term.id : undefined,
-    slug,
-    name,
-    count,
-    image: imageValue,
-  };
+  const result: WooProductBrand = { slug, name };
+  if (typeof term.id === "number") {
+    result.id = term.id;
+  }
+  if (count !== undefined) {
+    result.count = count;
+  }
+  if (imageValue !== undefined) {
+    result.image = imageValue;
+  }
+  return result;
 }
 
 function normalizeWooTerms(input: unknown): WooProductBrand[] {
@@ -533,11 +538,11 @@ function mergeCatalogBrandsFromWooLookup(
       })
       .filter((brand): brand is { slug: string; name: string } => Boolean(brand));
 
-    if (normalizedStoreBrands.length === 0) {
+    const primaryBrand = normalizedStoreBrands[0];
+    if (!primaryBrand) {
       return product;
     }
 
-    const primaryBrand = normalizedStoreBrands[0];
     const brandSlugs = Array.from(
       new Set([
         primaryBrand.slug,
@@ -548,9 +553,9 @@ function mergeCatalogBrandsFromWooLookup(
 
     return {
       ...product,
-      brand: primaryBrand.name,
-      brandSlug: primaryBrand.slug,
-      brandSlugs,
+      brand: primaryBrand.name ?? null,
+      brandSlug: primaryBrand.slug ?? null,
+      brandSlugs: brandSlugs.filter((slug): slug is string => typeof slug === "string"),
     };
   });
 }

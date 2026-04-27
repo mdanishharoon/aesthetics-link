@@ -154,7 +154,7 @@ async function handler(req: NextRequest, context: RouteContextParams): Promise<N
     upstream = await fetch(upstreamUrl.toString(), {
       method: req.method,
       headers,
-      body: validatedBody,
+      ...(validatedBody !== undefined ? { body: validatedBody } : {}),
       cache: "no-store",
     });
   } catch {

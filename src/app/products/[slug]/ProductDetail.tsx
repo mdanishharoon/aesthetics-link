@@ -426,10 +426,12 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
       if (isVariableProduct) {
         await addVariableCartItem(
           product.wooId,
-          variationAttributes.map((attribute) => ({
-            attribute: attribute.apiName,
-            value: variationSelection[attribute.id],
-          })),
+          variationAttributes
+            .map((attribute) => {
+              const value = variationSelection[attribute.id];
+              return value ? { attribute: attribute.apiName, value } : null;
+            })
+            .filter((entry): entry is { attribute: string; value: string } => entry !== null),
           1,
         );
       } else {
@@ -508,8 +510,8 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
       rating: reviewForm.rating,
       title: reviewForm.title,
       body: reviewForm.body,
-      author: user ? undefined : reviewForm.author,
-      email: user ? undefined : reviewForm.email,
+      author: user ? user.displayName || `${user.firstName} ${user.lastName}`.trim() : reviewForm.author,
+      email: user ? user.email : reviewForm.email,
     })
       .then(() => {
         setReviewFeedback({

@@ -73,11 +73,14 @@ function resolveBrandImage(brand: StorefrontNavLink, index: number): string {
   }
 
   const slug = extractBrandSlugFromHref(brand.href);
-  if (slug && BRAND_IMAGE_FALLBACKS[slug]) {
-    return BRAND_IMAGE_FALLBACKS[slug];
+  if (slug) {
+    const fallback = BRAND_IMAGE_FALLBACKS[slug];
+    if (fallback) {
+      return fallback;
+    }
   }
 
-  return BRAND_IMAGE_POOL[index % BRAND_IMAGE_POOL.length];
+  return BRAND_IMAGE_POOL[index % BRAND_IMAGE_POOL.length] ?? BRAND_IMAGE_POOL[0];
 }
 
 export default function Brands({

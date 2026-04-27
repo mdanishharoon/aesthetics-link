@@ -1,6 +1,18 @@
 import type { StorefrontNavLink, StorefrontNavigation } from "@/types";
 
-export const ACCENT_COLORS: string[] = ["#F1CCCF", "#D8D0C4", "#D3E5EF", "#E8DFC8"];
+export const ACCENT_COLORS = ["#F1CCCF", "#D8D0C4", "#D3E5EF", "#E8DFC8"] as const;
+const ACCENT_FALLBACK: string = ACCENT_COLORS[0];
+
+/** Pick a deterministic accent color for the given index. Falls back to the
+ * first colour rather than `undefined` so callers never have to narrow. */
+export function pickAccentColor(index: number): string {
+  if (!Number.isFinite(index)) {
+    return ACCENT_FALLBACK;
+  }
+  const length = ACCENT_COLORS.length;
+  const safe = ((Math.trunc(index) % length) + length) % length;
+  return ACCENT_COLORS[safe] ?? ACCENT_FALLBACK;
+}
 
 export const DEFAULT_NAV_TOP: StorefrontNavLink[] = [
   { label: "All Products", href: "/products" },

@@ -132,16 +132,16 @@ function buildOrderPreview(order: AuthOrderSummary): string {
 }
 
 function toneClassName(tone: string): string {
-  if (tone === "complete" || tone === "approved") return styles.isComplete;
-  if (tone === "active") return styles.isActive;
-  if (tone === "inactive" || tone === "rejected") return styles.isInactive;
-  return styles.isPending;
+  if (tone === "complete" || tone === "approved") return styles.isComplete ?? "";
+  if (tone === "active") return styles.isActive ?? "";
+  if (tone === "inactive" || tone === "rejected") return styles.isInactive ?? "";
+  return styles.isPending ?? "";
 }
 
 function clinicClassName(status: string | null | undefined): string {
-  if (status === "approved") return styles.isApproved;
-  if (status === "rejected") return styles.isRejected;
-  return styles.isPending;
+  if (status === "approved") return styles.isApproved ?? "";
+  if (status === "rejected") return styles.isRejected ?? "";
+  return styles.isPending ?? "";
 }
 
 function ProfileBanner({ children, error = false }: { children: ReactNode; error?: boolean }) {
@@ -561,15 +561,16 @@ function ProfileDashboard() {
     [form, user],
   );
 
+  const initialOrderDetail =
+    dashboardQuery.data?.initialOrderDetail &&
+    dashboardQuery.data.initialOrderDetail.orderId === effectiveSelectedOrderId
+      ? dashboardQuery.data.initialOrderDetail
+      : null;
   const detailQuery = useQuery<StorefrontOrderConfirmation>({
     queryKey: ["auth", "order", effectiveSelectedOrderId],
     queryFn: () => getOrderDetail(effectiveSelectedOrderId as number),
     enabled: Boolean(user && effectiveSelectedOrderId),
-    initialData:
-      dashboardQuery.data?.initialOrderDetail &&
-      dashboardQuery.data.initialOrderDetail.orderId === effectiveSelectedOrderId
-        ? dashboardQuery.data.initialOrderDetail
-        : undefined,
+    ...(initialOrderDetail ? { initialData: initialOrderDetail } : {}),
   });
 
   const logoutMutation = useMutation({

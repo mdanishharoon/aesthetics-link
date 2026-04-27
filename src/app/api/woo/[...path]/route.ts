@@ -104,7 +104,7 @@ async function proxyWooStoreApi(
       {
         method: request.method,
         headers: upstreamHeaders,
-        body,
+        ...(body !== undefined ? { body } : {}),
         cache: "no-store",
       },
       { attempts: isIdempotent ? 3 : 1 },

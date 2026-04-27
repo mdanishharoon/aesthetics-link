@@ -49,7 +49,7 @@ export default function ShopByConcern({
             >
               <div className="concerns__tile-icon">
                 <Image
-                  src={CONCERN_ICONS[i % CONCERN_ICONS.length]}
+                  src={CONCERN_ICONS[i % CONCERN_ICONS.length] ?? CONCERN_ICONS[0]}
                   alt=""
                   aria-hidden="true"
                   width={32}

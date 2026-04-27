@@ -139,7 +139,8 @@ function ProductRail({
         maxOffset: 0,
       };
     const cards = track.querySelectorAll<HTMLElement>(".product__card");
-    if (!cards.length)
+    const firstCard = cards[0];
+    if (!firstCard)
       return {
         cardW: 0,
         gap: 0,
@@ -147,9 +148,11 @@ function ProductRail({
         count: products.length,
         maxOffset: 0,
       };
-    const cardW = cards[0].offsetWidth;
-    const gap =
-      cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft - cardW : 0;
+    const cardW = firstCard.offsetWidth;
+    const secondCard = cards[1];
+    const gap = secondCard
+      ? secondCard.offsetLeft - firstCard.offsetLeft - cardW
+      : 0;
     const step = cardW + gap;
     const trackW = (cards.length - 1) * step + cardW;
     const viewW =

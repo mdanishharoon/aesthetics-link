@@ -8,7 +8,8 @@ function parseLocaleRegion(locale: string | null | undefined): string {
   }
 
   const match = locale.trim().match(/[-_]([A-Za-z]{2})\b/);
-  return match ? match[1].toUpperCase() : "";
+  const region = match?.[1];
+  return region ? region.toUpperCase() : "";
 }
 
 function normalizeRegion(value: string | null | undefined): string {

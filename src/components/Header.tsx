@@ -26,7 +26,7 @@ export default function Header({ darkLogo = false, forceScrolled = false }: { da
     queryKey: ["storefront", "cart"],
     queryFn: fetchCart,
     enabled: false,
-    initialData: initialCachedCart ?? undefined,
+    ...(initialCachedCart ? { initialData: initialCachedCart } : {}),
   });
   const cartCount = cart?.itemCount ?? 0;
 
