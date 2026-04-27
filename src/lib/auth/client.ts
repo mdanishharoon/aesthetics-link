@@ -9,21 +9,22 @@ import type {
   RequestEmailVerificationPayload,
   RequestPasswordResetPayload,
   ResetPasswordPayload,
+  StorefrontOrderConfirmation,
   UpdateProfilePayload,
   VerifyEmailPayload,
   WholesalePricesResponse,
-} from "@/lib/auth/types";
-import type { StorefrontOrderConfirmation } from "@/lib/storefront/types";
-
-type ErrorPayload = {
-  message?: string;
-  code?: string;
-  status?: number;
-};
+} from "@/types";
+import {
+  WooClientError,
+  extractErrorMessage,
+  extractErrorPayloadCode,
+  wooFetch,
+} from "@/lib/woo-client";
+import { clearCachedCartSnapshot } from "@/lib/storefront/client";
 
 export class AuthApiError extends Error {
   readonly status: number;
-  readonly code?: string;
+  readonly code: string | undefined;
 
   constructor(message: string, status: number, code?: string) {
     super(message);
@@ -34,27 +35,38 @@ export class AuthApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    cache: "no-store",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-
-  const payload = (await response.json().catch(() => null)) as ErrorPayload | null;
-
-  if (!response.ok) {
-    throw new AuthApiError(
-      payload?.message ?? `Auth request failed (${response.status})`,
-      response.status,
-      payload?.code,
+  try {
+    return await wooFetch<T>(
+      path,
+      {
+        cache: "no-store",
+        ...init,
+        headers: {
+          Accept: "application/json",
+          ...(init?.body ? { "Content-Type": "application/json" } : {}),
+          ...init?.headers,
+        },
+      },
+      {
+        context: `${init?.method ?? "GET"} ${path}`,
+        onUpstreamError: (payload, response) => {
+          throw new AuthApiError(
+            extractErrorMessage(payload) ?? `Auth request failed (${response.status})`,
+            response.status,
+            extractErrorPayloadCode(payload) ?? undefined,
+          );
+        },
+      },
     );
+  } catch (error) {
+    if (error instanceof AuthApiError) {
+      throw error;
+    }
+    if (error instanceof WooClientError) {
+      throw new AuthApiError(error.message, error.status || 0, error.code);
+    }
+    throw error;
   }
-
-  return payload as T;
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
@@ -125,9 +137,15 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<Auth
 }
 
 export async function logout(): Promise<{ ok: true }> {
-  return request<{ ok: true }>("/api/auth/logout", {
-    method: "POST",
-  });
+  try {
+    return await request<{ ok: true }>("/api/auth/logout", {
+      method: "POST",
+    });
+  } finally {
+    // Clear the local cart snapshot regardless of upstream success so a stale
+    // cart never leaks between accounts on the same browser.
+    clearCachedCartSnapshot();
+  }
 }
 
 export async function getWholesalePrices(ids: number[]): Promise<WholesalePricesResponse> {

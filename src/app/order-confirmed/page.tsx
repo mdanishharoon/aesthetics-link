@@ -5,7 +5,7 @@ import CheckoutCompletionCartReset from "@/components/CheckoutCompletionCartRese
 import Header from "@/components/Header";
 import OrderCompletionMarketing from "@/components/OrderCompletionMarketing";
 import { getOrderConfirmation } from "@/lib/storefront/server";
-import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
+import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/types";
 import styles from "./OrderConfirmedPage.module.css";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;

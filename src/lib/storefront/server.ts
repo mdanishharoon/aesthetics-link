@@ -26,7 +26,7 @@ import type {
   StorefrontOrderConfirmation,
   StorefrontVariableConfig,
   StorefrontVariationAttribute,
-} from "@/lib/storefront/types";
+} from "@/types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

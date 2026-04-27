@@ -1,4 +1,4 @@
-import type { StorefrontNavLink, StorefrontNavigation } from "@/lib/storefront/types";
+import type { StorefrontNavLink, StorefrontNavigation } from "@/types";
 
 export const ACCENT_COLORS: string[] = ["#F1CCCF", "#D8D0C4", "#D3E5EF", "#E8DFC8"];
 

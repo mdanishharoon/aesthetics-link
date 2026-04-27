@@ -9,7 +9,7 @@ import CaptchaField from "@/components/CaptchaField";
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
 import { register } from "@/lib/auth/client";
-import type { AccountType } from "@/lib/auth/types";
+import type { AccountType } from "@/types";
 
 type FormState = {
   firstName: string;

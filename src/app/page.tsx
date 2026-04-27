@@ -13,7 +13,7 @@ import Journal from '@/components/Journal';
 import SocialConnect from '@/components/SocialConnect';
 import Footer from '@/components/Footer';
 import { getCatalogProducts, getStorefrontNavigation } from '@/lib/storefront/server';
-import type { StorefrontCatalogProduct } from '@/lib/storefront/types';
+import type { StorefrontCatalogProduct } from '@/types';
 
 function toFeaturedCard(product: StorefrontCatalogProduct): LandingFeaturedProduct {
   return {

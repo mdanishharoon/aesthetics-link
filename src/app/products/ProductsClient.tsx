@@ -19,7 +19,7 @@ import {
   removeCartItem,
   updateCartItemQuantity,
 } from "@/lib/storefront/client";
-import type { StorefrontCart, StorefrontCatalogProduct } from "@/lib/storefront/types";
+import type { StorefrontCart, StorefrontCatalogProduct } from "@/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";

@@ -13,7 +13,7 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { trackMarketingEvent } from "@/lib/marketing/client";
 import { resolveMarketingCustomerType, resolveMarketingRegion } from "@/lib/marketing/context";
-import type { StorefrontCart } from "@/lib/storefront/types";
+import type { StorefrontCart } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

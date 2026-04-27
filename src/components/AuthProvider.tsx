@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { AuthApiError, getMe } from "@/lib/auth/client";
-import type { AuthUser } from "@/lib/auth/types";
+import type { AuthUser } from "@/types";
 
 type AuthContextValue = {
   user: AuthUser | null;

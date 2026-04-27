@@ -4,9 +4,14 @@ import type {
   StorefrontCart,
   StorefrontOrderLookupResult,
   StorefrontProductReviewsResponse,
-} from "@/lib/storefront/types";
+} from "@/types";
 import { decodeEntities } from "@/lib/utils/text";
 import { ACCENT_COLORS } from "@/lib/storefront/constants";
+import {
+  WooClientError,
+  extractErrorMessage,
+  wooFetch,
+} from "@/lib/woo-client";
 
 // ── Raw Store API types ─────────────────────────────────────────────────────
 
@@ -229,10 +234,9 @@ export function getCachedCartSnapshot(): StorefrontCart | null {
 // ── Store API client ───────────────────────────────────────────────────────
 
 function isNonceErrorPayload(payload: unknown): boolean {
+  const message = extractErrorMessage(payload) ?? "";
   const record = asRecord(payload);
-  if (!record) return false;
-  const message = typeof record.message === "string" ? record.message : "";
-  const code = typeof record.code === "string" ? record.code : "";
+  const code = record && typeof record.code === "string" ? record.code : "";
   return /nonce/i.test(message) || /nonce/i.test(code);
 }
 
@@ -250,48 +254,54 @@ async function refreshNonce(): Promise<void> {
   }
 }
 
+function isMutation(method: string | undefined): boolean {
+  return Boolean(method) && method !== "GET" && method !== "HEAD";
+}
+
 async function requestStoreApi<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
-  let response: Response;
   try {
-    response = await fetch(`/api/woo${path}`, {
-      cache: "no-store",
-      ...init,
-      headers: {
-        Accept: "application/json",
-        ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...init?.headers,
+    return await wooFetch<T>(
+      `/api/woo${path}`,
+      {
+        cache: "no-store",
+        ...init,
+        headers: {
+          Accept: "application/json",
+          ...(init?.body ? { "Content-Type": "application/json" } : {}),
+          ...init?.headers,
+        },
       },
-    });
+      {
+        context: `${init?.method ?? "GET"} /api/woo${path}`,
+        onUpstreamError: (payload, response) => {
+          const raw = extractErrorMessage(payload);
+          throw new WooClientError(
+            raw ? normalizeStoreErrorMessage(raw) : `Store API request failed (${response.status})`,
+            response.status,
+          );
+        },
+      },
+    );
   } catch (error) {
-    throw new Error("Temporary connection issue reaching checkout store. Please try again.", {
-      cause: error,
-    });
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  const payload = contentType.includes("application/json")
-    ? await response.json().catch(() => null)
-    : await response.text().catch(() => "");
-
-  if (!response.ok) {
-    // On a nonce error for mutation requests, refresh the nonce and retry once.
-    const isMutation = init?.method && init.method !== "GET" && init.method !== "HEAD";
-    if (!retried && isMutation && (response.status === 401 || response.status === 403) && isNonceErrorPayload(payload)) {
+    if (
+      !retried &&
+      isMutation(init?.method) &&
+      error instanceof WooClientError &&
+      (error.status === 401 || error.status === 403) &&
+      isNonceErrorPayload({ message: error.message })
+    ) {
       await refreshNonce();
       return requestStoreApi<T>(path, init, true);
     }
 
-    const message =
-      typeof payload === "object" &&
-      payload &&
-      "message" in payload &&
-      typeof (payload as { message?: string }).message === "string"
-        ? normalizeStoreErrorMessage((payload as { message: string }).message)
-        : `Store API request failed (${response.status})`;
-    throw new Error(message);
-  }
+    if (error instanceof WooClientError) {
+      throw error;
+    }
 
-  return payload as T;
+    throw new Error("Temporary connection issue reaching checkout store. Please try again.", {
+      cause: error,
+    });
+  }
 }
 
 function mapRawCart(rawCart: RawCart): StorefrontCart {
@@ -435,47 +445,47 @@ export async function removeCartItem(key: string): Promise<StorefrontCart> {
 }
 
 export async function lookupGuestOrder(orderNumber: string, email: string): Promise<StorefrontOrderLookupResult> {
-  const response = await fetch("/api/orders/lookup", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+  return wooFetch<StorefrontOrderLookupResult>(
+    "/api/orders/lookup",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ orderNumber, email }),
+      cache: "no-store",
     },
-    body: JSON.stringify({ orderNumber, email }),
-    cache: "no-store",
-  });
-
-  const payload = (await response.json().catch(() => null)) as
-    | StorefrontOrderLookupResult
-    | { message?: string }
-    | null;
-
-  if (!response.ok) {
-    throw new Error(payload && "message" in payload && payload.message ? payload.message : "Order lookup failed.");
-  }
-
-  return payload as StorefrontOrderLookupResult;
+    {
+      context: "POST /api/orders/lookup",
+      onUpstreamError: (payload, response) => {
+        throw new WooClientError(
+          extractErrorMessage(payload) ?? "Order lookup failed.",
+          response.status,
+        );
+      },
+    },
+  );
 }
 
 export async function fetchProductReviews(productId: number): Promise<StorefrontProductReviewsResponse> {
-  const response = await fetch(`/api/products/reviews?productId=${encodeURIComponent(String(productId))}`, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
+  return wooFetch<StorefrontProductReviewsResponse>(
+    `/api/products/reviews?productId=${encodeURIComponent(String(productId))}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
-
-  const payload = (await response.json().catch(() => null)) as
-    | StorefrontProductReviewsResponse
-    | { message?: string }
-    | null;
-
-  if (!response.ok) {
-    throw new Error(payload && "message" in payload && payload.message ? payload.message : "Unable to load reviews.");
-  }
-
-  return payload as StorefrontProductReviewsResponse;
+    {
+      context: `GET /api/products/reviews?productId=${productId}`,
+      onUpstreamError: (payload, response) => {
+        throw new WooClientError(
+          extractErrorMessage(payload) ?? "Unable to load reviews.",
+          response.status,
+        );
+      },
+    },
+  );
 }
 
 export async function submitProductReview(input: {
@@ -499,36 +509,35 @@ export async function submitProductReview(input: {
     return message;
   };
 
-  const response = await fetch("/api/products/reviews", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
+  const payload = await wooFetch<{
+    ok?: boolean;
+    pendingModeration?: boolean;
+    message?: string;
+  }>(
+    "/api/products/reviews",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify(input),
     },
-    cache: "no-store",
-    body: JSON.stringify(input),
-  });
-
-  const payload = (await response.json().catch(() => null)) as
-    | { ok?: boolean; pendingModeration?: boolean; message?: string }
-    | { message?: string }
-    | null;
-
-  if (!response.ok) {
-    throw new Error(
-      normalizeReviewMessage(
-        payload && "message" in payload ? payload.message : undefined,
-        "Unable to submit review.",
-      ),
-    );
-  }
+    {
+      context: "POST /api/products/reviews",
+      onUpstreamError: (errPayload, response) => {
+        throw new WooClientError(
+          normalizeReviewMessage(extractErrorMessage(errPayload) ?? undefined, "Unable to submit review."),
+          response.status,
+        );
+      },
+    },
+  );
 
   return {
     ok: true,
-    pendingModeration: Boolean(payload && "pendingModeration" in payload && payload.pendingModeration),
-    message: normalizeReviewMessage(
-      payload && "message" in payload ? payload.message : undefined,
-      "Review submitted successfully.",
-    ),
+    pendingModeration: Boolean(payload.pendingModeration),
+    message: normalizeReviewMessage(payload.message, "Review submitted successfully."),
   };
 }

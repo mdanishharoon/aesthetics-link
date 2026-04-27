@@ -16,8 +16,8 @@ import type {
   AuthUser,
   BusinessInfo,
   UpdateProfilePayload,
-} from "@/lib/auth/types";
-import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/lib/storefront/types";
+} from "@/types";
+import type { StorefrontOrderAddress, StorefrontOrderConfirmation } from "@/types";
 import styles from "./ProfilePage.module.css";
 
 const ORDER_FETCH_LIMIT = 12;

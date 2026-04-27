@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 
-import type { StorefrontNavigation } from "@/lib/storefront/types";
+import type { StorefrontNavigation } from "@/types";
 
 const StorefrontNavigationContext = createContext<StorefrontNavigation | null>(null);
 

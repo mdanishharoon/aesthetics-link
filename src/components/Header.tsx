@@ -9,7 +9,7 @@ import { useStorefrontNavigation } from "@/components/StorefrontNavigationProvid
 import { DEFAULT_NAVIGATION } from "@/lib/storefront/constants";
 import { fetchCart, getCachedCartSnapshot } from "@/lib/storefront/client";
 import { decodeEntities } from "@/lib/utils/text";
-import type { StorefrontCart } from "@/lib/storefront/types";
+import type { StorefrontCart } from "@/types";
 
 export default function Header({ darkLogo = false, forceScrolled = false }: { darkLogo?: boolean; forceScrolled?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);

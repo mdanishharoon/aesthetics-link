@@ -1,4 +1,4 @@
-import type { AuthUser } from "@/lib/auth/types";
+import type { AuthUser } from "@/types";
 
 export type MarketingCustomerType = "retail" | "clinic" | "wholesale" | "guest";
 

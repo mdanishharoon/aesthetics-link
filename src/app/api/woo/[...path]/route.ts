@@ -1,86 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getWooStoreBaseUrl } from "@/lib/storefront/config";
+import { extractErrorCode, fetchWithRetry } from "@/lib/woo-client";
 
 const CART_TOKEN_COOKIE = "woo_cart_token";
 const NONCE_TOKEN_COOKIE = "woo_nonce_token";
 const SESSION_TOKEN_COOKIE = "al_session_token";
 const ALLOWED_ROOTS = new Set(["products", "cart", "checkout", "order"]);
-const RETRYABLE_NETWORK_CODES = new Set([
-  "ECONNRESET",
-  "ECONNREFUSED",
-  "ETIMEDOUT",
-  "EAI_AGAIN",
-  "ENOTFOUND",
-  "UND_ERR_ABORTED",
-  "UND_ERR_BODY_TIMEOUT",
-  "UND_ERR_CONNECT_TIMEOUT",
-  "UND_ERR_HEADERS_TIMEOUT",
-  "UND_ERR_SOCKET",
-]);
+
 type RouteContextParams = { params: Promise<{ path?: string[] }> };
-
-function extractNetworkErrorCode(error: unknown): string | null {
-  if (!error || typeof error !== "object") {
-    return null;
-  }
-
-  const directCode =
-    "code" in error && typeof (error as { code?: unknown }).code === "string"
-      ? (error as { code: string }).code
-      : null;
-
-  if (directCode) {
-    return directCode;
-  }
-
-  const cause =
-    "cause" in error && (error as { cause?: unknown }).cause
-      ? (error as { cause: unknown }).cause
-      : null;
-
-  if (!cause || typeof cause !== "object") {
-    return null;
-  }
-
-  return "code" in cause && typeof (cause as { code?: unknown }).code === "string"
-    ? (cause as { code: string }).code
-    : null;
-}
-
-function isRetryableNetworkError(error: unknown): boolean {
-  const code = extractNetworkErrorCode(error);
-  return Boolean(code && RETRYABLE_NETWORK_CODES.has(code));
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function fetchWithRetry(
-  input: string,
-  init: RequestInit,
-  maxAttempts: number,
-): Promise<Response> {
-  let lastError: unknown = null;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      return await fetch(input, init);
-    } catch (error) {
-      lastError = error;
-      if (attempt >= maxAttempts || !isRetryableNetworkError(error)) {
-        throw error;
-      }
-
-      await sleep(150 * attempt);
-    }
-  }
-
-  throw (lastError as Error) ?? new Error("Unknown upstream request error.");
-}
 
 function applySessionCookies(
   response: NextResponse,
@@ -170,7 +98,7 @@ async function proxyWooStoreApi(
 
   let upstreamResponse: Response;
   try {
-    const attempts = request.method === "GET" || request.method === "HEAD" ? 3 : 1;
+    const isIdempotent = request.method === "GET" || request.method === "HEAD";
     upstreamResponse = await fetchWithRetry(
       upstreamUrl.toString(),
       {
@@ -179,10 +107,10 @@ async function proxyWooStoreApi(
         body,
         cache: "no-store",
       },
-      attempts,
+      { attempts: isIdempotent ? 3 : 1 },
     );
   } catch (error) {
-    const code = extractNetworkErrorCode(error) ?? "UNKNOWN";
+    const code = extractErrorCode(error) ?? "UNKNOWN";
     console.error(`[Woo proxy] Upstream request failed (${code})`, error);
     return NextResponse.json(
       { message: "Temporary connection issue reaching checkout store. Please try again." },

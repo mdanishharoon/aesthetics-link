@@ -9,7 +9,7 @@ import CaptchaField from "@/components/CaptchaField";
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
 import { AuthApiError, login } from "@/lib/auth/client";
-import type { AuthUser } from "@/lib/auth/types";
+import type { AuthUser } from "@/types";
 
 export default function Login() {
   const router = useRouter();

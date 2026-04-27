@@ -7,7 +7,7 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import MotionProvider from "@/components/MotionProvider";
 import { lookupGuestOrder } from "@/lib/storefront/client";
-import type { StorefrontOrderAddress, StorefrontOrderLookupResult } from "@/lib/storefront/types";
+import type { StorefrontOrderAddress, StorefrontOrderLookupResult } from "@/types";
 
 function AddressBlock({
   label,

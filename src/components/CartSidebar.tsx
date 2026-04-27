@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { StorefrontCart } from "@/lib/storefront/types";
+import type { StorefrontCart } from "@/types";
 
 export default function CartSidebar({
   cart,

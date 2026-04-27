@@ -3,7 +3,7 @@
 import type React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { StorefrontNavLink } from "@/lib/storefront/types";
+import type { StorefrontNavLink } from "@/types";
 
 const CONCERN_ICONS = [
   "/images/icon-clean-beyond-reproach.svg",

@@ -28,7 +28,7 @@ import type {
   StorefrontProductReview,
   StorefrontProductReviewsSummary,
   StorefrontVariationAttribute,
-} from "@/lib/storefront/types";
+} from "@/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const EMPTY_CART: StorefrontCart = {

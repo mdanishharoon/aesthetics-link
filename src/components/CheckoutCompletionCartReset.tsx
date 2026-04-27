@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { clearCachedCartSnapshot } from "@/lib/storefront/client";
-import type { StorefrontCart } from "@/lib/storefront/types";
+import type { StorefrontCart } from "@/types";
 
 const EMPTY_CART: StorefrontCart = {
   items: [],
