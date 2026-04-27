@@ -47,6 +47,7 @@ require_once __DIR__ . '/includes/class-modules.php';
 require_once __DIR__ . '/includes/auth/class-opaque-session-strategy.php';
 require_once __DIR__ . '/includes/auth/class-jwt-strategy.php';
 require_once __DIR__ . '/includes/api/class-base-rest-controller.php';
+require_once __DIR__ . '/includes/services/class-webhook-dispatcher.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();

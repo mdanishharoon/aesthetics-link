@@ -27,6 +27,7 @@ final class AL_B2B_Plugin {
 	private AL_B2B_Loader $loader;
 	private AL_B2B_Modules $modules;
 	private AL_B2B_Auth_Strategy_Interface $auth_strategy;
+	private AL_B2B_Webhook_Dispatcher $webhook_dispatcher;
 	private bool $booted = false;
 
 	public static function instance(): AL_B2B_Plugin {
@@ -37,10 +38,15 @@ final class AL_B2B_Plugin {
 	}
 
 	private function __construct() {
-		$this->config        = require dirname(__DIR__) . '/config/default-config.php';
-		$this->loader        = new AL_B2B_Loader();
-		$this->modules       = new AL_B2B_Modules($this->config);
-		$this->auth_strategy = $this->create_auth_strategy();
+		$this->config             = require dirname(__DIR__) . '/config/default-config.php';
+		$this->loader             = new AL_B2B_Loader();
+		$this->modules            = new AL_B2B_Modules($this->config);
+		$this->auth_strategy      = $this->create_auth_strategy();
+		$this->webhook_dispatcher = new AL_B2B_Webhook_Dispatcher(
+			isset($this->config['webhooks']) && is_array($this->config['webhooks'])
+				? $this->config['webhooks']
+				: array()
+		);
 	}
 
 	public function get_config(): array {
@@ -59,6 +65,10 @@ final class AL_B2B_Plugin {
 		return $this->auth_strategy;
 	}
 
+	public function get_webhook_dispatcher(): AL_B2B_Webhook_Dispatcher {
+		return $this->webhook_dispatcher;
+	}
+
 	/**
 	 * Boot the plugin once. Idempotent: a second call is a no-op.
 	 *
@@ -75,6 +85,14 @@ final class AL_B2B_Plugin {
 			return;
 		}
 		$this->booted = true;
+
+		// Webhook retry handler. WP-Cron fires this for queued retry attempts.
+		add_action(
+			AL_B2B_Webhook_Dispatcher::RETRY_HOOK,
+			array($this->webhook_dispatcher, 'try_dispatch'),
+			10,
+			3
+		);
 
 		// Sub-phases 3d-3e will register modules onto $this->modules here.
 		// e.g. $this->modules->register(new AL_B2B_Module_Wholesale_Pricing(...));
