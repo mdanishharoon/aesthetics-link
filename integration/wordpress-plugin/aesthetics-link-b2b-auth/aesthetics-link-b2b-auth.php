@@ -41,6 +41,7 @@ defined('AL_B2B_SESSION_TTL')                || define('AL_B2B_SESSION_TTL',    
  * remaining global auth functions are thin delegates.
  */
 require_once __DIR__ . '/includes/interface-module.php';
+require_once __DIR__ . '/includes/interface-module-with-schema.php';
 require_once __DIR__ . '/includes/interface-auth-strategy.php';
 require_once __DIR__ . '/includes/class-loader.php';
 require_once __DIR__ . '/includes/class-modules.php';
@@ -57,6 +58,7 @@ require_once __DIR__ . '/includes/modules/class-module-reviews.php';
 require_once __DIR__ . '/includes/modules/class-module-checkout-bridge.php';
 require_once __DIR__ . '/includes/modules/class-module-order-receipt.php';
 require_once __DIR__ . '/includes/modules/class-module-wishlist.php';
+require_once __DIR__ . '/includes/modules/class-module-abandoned-cart.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
@@ -217,6 +219,16 @@ function al_b2b_create_tables() {
 	dbDelta($sql_audit);
 	dbDelta($sql_newsletter);
 	dbDelta($sql_events);
+
+	// Modules with their own schema (interface AL_B2B_Module_With_Schema)
+	// install their tables here. Run for every registered module - regardless
+	// of enable flag - so a deployer can flip a module on later without a
+	// reactivation step.
+	foreach (AL_B2B_Plugin::instance()->get_modules()->all() as $module) {
+		if ($module instanceof AL_B2B_Module_With_Schema) {
+			$module->install_schema();
+		}
+	}
 }
 
 function al_b2b_cleanup_expired_sessions() {

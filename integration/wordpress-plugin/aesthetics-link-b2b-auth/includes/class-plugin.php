@@ -113,6 +113,7 @@ final class AL_B2B_Plugin {
 		// Phase 3e new modules. All default OFF so existing deployments are
 		// unaffected; deployers opt in via config['modules'].
 		$this->modules->register(new AL_B2B_Module_Wishlist($this->auth_strategy));
+		$this->modules->register(new AL_B2B_Module_Abandoned_Cart($this->webhook_dispatcher));
 
 		$this->modules->boot_enabled();
 		$this->loader->run();
