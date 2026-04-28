@@ -1274,7 +1274,7 @@ section {
 
 @media (max-width: 767.98px) {
   #explore .explore__title {
-    margin-bottom: 5rem;
+    margin-bottom: 3rem;
   }
 }
 
@@ -1806,13 +1806,13 @@ section {
   }
 
   #journal .journal__card {
-    margin: 0 auto;
-    max-width: min(100%, 21rem);
+    margin: 0;
+    max-width: 100%;
   }
 
   #journal .journal__card.featured {
-    margin: 0 auto !important;
-    max-width: min(100%, 21rem);
+    margin: 0 !important;
+    max-width: 100%;
   }
 
   #journal .journal__card.featured .journal__card-image,
@@ -3921,11 +3921,13 @@ h5,
 
 #explore .half__grid-product {
   align-items: center;
+  background: #fff;
   height: auto;
 }
 
 /* Fix: content column fills the full grid height instead of being capped at 52rem */
 #explore .half__grid-content {
+  background: #fff;
   max-height: none;
   padding-top: 5rem;
   padding-bottom: 4rem;
@@ -3940,7 +3942,31 @@ h5,
 
 /* Clip the carousel track — the parent half__grid already handles peek masking */
 #explore .half__grid .product__carousel-viewport {
+  background: #fff;
   overflow: hidden;
+}
+
+#explore .half__grid .product__carousel-track {
+  background: #fff;
+}
+
+#explore .product__card {
+  background: var(--color-light-bg);
+  box-shadow: none;
+}
+
+#explore .product__card-foot {
+  background: var(--color-light-bg);
+}
+
+#explore .product__card.is-active,
+#explore .product__card:hover {
+  box-shadow: none;
+}
+
+#explore .product__rail,
+#explore .half__grid {
+  background: #fff;
 }
 
 #journal .journal__card {
@@ -5404,6 +5430,12 @@ h5,
   margin: 4rem 0;
 }
 
+@media (max-width: 767.98px) {
+  .ethos__rule {
+    margin: 2.5rem 0;
+  }
+}
+
 .ethos__bottom {
   display: flex;
   align-items: flex-end;
@@ -5532,10 +5564,17 @@ h5,
 }
 
 @media (max-width: 767.98px) {
+  .shop-hero__portrait {
+    display: none;
+  }
 
   #shop-hero::before,
   #shop-hero::after {
     display: none;
+  }
+
+  #shop-hero {
+    min-height: 56vh;
   }
 }
 
@@ -5572,12 +5611,20 @@ h5,
 
 @media (max-width: 767.98px) {
   .shop-hero__title {
-    font-size: clamp(3.5rem, 10vw, 6rem) !important;
+    font-size: clamp(3rem, 9vw, 5rem) !important;
+    margin-bottom: 1.25rem;
   }
 
   .shop-hero__content {
-    padding-top: 9rem;
-    padding-bottom: 5rem;
+    padding-top: 8rem;
+    padding-bottom: 4rem;
+    max-width: 68%;
+  }
+
+  .shop-hero__desc {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    max-width: 100%;
   }
 }
 
@@ -5659,7 +5706,13 @@ h5,
 @media (max-width: 991.98px) {
   .shop-layout {
     flex-direction: column;
-    gap: 3rem;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .shop-layout {
+    gap: 1.5rem;
   }
 }
 
@@ -5678,6 +5731,20 @@ h5,
     width: 100%;
     position: relative;
     top: 0;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .shop-sidebar__title {
+    margin-bottom: 1.25rem;
+  }
+
+  .shop-sidebar__group:not(:last-of-type) {
+    margin-bottom: 1.25rem;
+  }
+
+  .shop-sidebar__group-label {
+    margin-bottom: 0.6rem;
   }
 }
 
@@ -5705,6 +5772,7 @@ h5,
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  list-style: none;
 }
 
 @media (max-width: 991.98px) {
@@ -5800,8 +5868,39 @@ h5,
 
 @media (max-width: 640px) {
   .shop-product-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .shop-product-grid .shop-product-card__body {
+    padding: 0.85rem 0.9rem 0.6rem;
+    flex-direction: column;
+    gap: 0.3rem;
+    align-items: flex-start;
+  }
+
+  .shop-product-grid .shop-product-card__text {
+    width: 100%;
+  }
+
+  .shop-product-grid .shop-product-card__name {
+    font-size: 0.78rem;
+  }
+
+  .shop-product-grid .shop-product-card__price {
+    font-size: 0.78rem;
+    white-space: normal;
+  }
+
+  .shop-product-grid .shop-product-card__tagline {
+    display: none;
+  }
+
+  .shop-product-grid .shop-product-card__cta {
+    margin: 0 0.75rem 0.75rem;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
   }
 }
 
@@ -5873,6 +5972,13 @@ h5,
   font-size: 0.65rem;
   letter-spacing: 0.12em;
   padding: 0.35rem 1rem 0.28rem;
+}
+
+@media (max-width: 767.98px) {
+  .shop-product-card__category,
+  .product__card-category {
+    display: none;
+  }
 }
 
 /* Body / info */
@@ -6220,6 +6326,12 @@ h5,
   background: var(--color-light-bg);
   margin: 0;
   padding: 6rem 0;
+}
+
+@media (max-width: 767.98px) {
+  #shop-ethos {
+    padding: 3.5rem 0;
+  }
 }
 
 .shop-ethos__inner {
@@ -9147,11 +9259,30 @@ button:focus-visible {
 
 @media (max-width: 767.98px) {
   .featured__grid {
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    overflow-x: visible;
+    scroll-snap-type: none;
   }
 
   #featured-products .shop-product-card {
-    flex: 0 0 calc((100% - 1rem) / 2);
+    flex: none;
+    width: 100%;
+    scroll-snap-align: none;
+  }
+
+  #featured-products .shop-product-card__body {
+    padding: 0.9rem 1rem 0.75rem;
+  }
+
+  #featured-products .shop-product-card__name {
+    font-size: 0.8rem;
+  }
+
+  #featured-products .shop-product-card__cta {
+    margin: 0 0.75rem 0.75rem;
+    padding: 0.7rem 1rem;
   }
 }
 
@@ -9163,6 +9294,12 @@ button:focus-visible {
 /* Featured products: taller image area to show full product bottles */
 #featured-products .featured-card__image-wrap {
   aspect-ratio: 3 / 4;
+}
+
+@media (max-width: 767.98px) {
+  #featured-products .featured-card__image-wrap {
+    aspect-ratio: 1 / 1;
+  }
 }
 
 /* Use cover so images are flush like the shop cards */

@@ -708,6 +708,14 @@ function ProfileDashboard() {
                       {logoutMutation.isPending ? "Signing out..." : "Log out"}
                     </button>
                   </div>
+                  <nav className={styles.statusStrip} aria-label="Account navigation">
+                    <Link href="/cart" className={styles.statusStripLink}>
+                      View bag
+                    </Link>
+                    <Link href="/forgot-password" className={styles.statusStripLink}>
+                      Reset password
+                    </Link>
+                  </nav>
                 </div>
               </header>
 
@@ -723,34 +731,27 @@ function ProfileDashboard() {
                 </div>
               ) : null}
 
-              <nav className={styles.statusStrip} aria-label="Account navigation">
-                <Link href="/cart" className={styles.statusStripLink}>
-                  View bag
-                </Link>
-                <Link href="/forgot-password" className={styles.statusStripLink}>
-                  Reset password
-                </Link>
-              </nav>
-
               <div className={styles.content}>
-                <OrdersSection
-                  orders={orders}
-                  loading={dashboardQuery.isPending}
-                  error={null}
-                  selectedOrderId={effectiveSelectedOrderId}
-                  onRetry={() => void dashboardQuery.refetch()}
-                  onSelectOrder={(orderId) => setSelectedOrderId(orderId)}
-                />
-
-                {effectiveSelectedOrderId ? (
-                  <OrderDetailPanel
-                    order={detailQuery.data ?? null}
-                    summary={selectedOrderSummary}
-                    loading={detailQuery.isPending}
-                    error={detailQuery.error instanceof Error ? detailQuery.error.message : null}
-                    onRetry={() => void detailQuery.refetch()}
+                <div className={styles.orderWorkspace}>
+                  <OrdersSection
+                    orders={orders}
+                    loading={dashboardQuery.isPending}
+                    error={null}
+                    selectedOrderId={effectiveSelectedOrderId}
+                    onRetry={() => void dashboardQuery.refetch()}
+                    onSelectOrder={(orderId) => setSelectedOrderId(orderId)}
                   />
-                ) : null}
+
+                  {effectiveSelectedOrderId ? (
+                    <OrderDetailPanel
+                      order={detailQuery.data ?? null}
+                      summary={selectedOrderSummary}
+                      loading={detailQuery.isPending}
+                      error={detailQuery.error instanceof Error ? detailQuery.error.message : null}
+                      onRetry={() => void detailQuery.refetch()}
+                    />
+                  ) : null}
+                </div>
 
                 <AccountSettingsSection
                   user={user}
