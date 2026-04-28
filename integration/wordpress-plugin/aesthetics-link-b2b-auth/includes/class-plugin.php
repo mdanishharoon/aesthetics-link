@@ -118,6 +118,11 @@ final class AL_B2B_Plugin {
 		$this->modules->register(new AL_B2B_Module_Real_Time_Stock($this->webhook_dispatcher));
 		$this->modules->register(new AL_B2B_Module_Faceted_Search());
 
+		// Stub modules - documented integration points only, no logic yet.
+		$this->modules->register(new AL_B2B_Module_Subscriptions());
+		$this->modules->register(new AL_B2B_Module_Multi_Currency());
+		$this->modules->register(new AL_B2B_Module_Multi_Language());
+
 		$this->modules->boot_enabled();
 		$this->loader->run();
 	}
