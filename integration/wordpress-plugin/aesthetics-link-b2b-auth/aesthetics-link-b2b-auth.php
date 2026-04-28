@@ -1624,7 +1624,12 @@ function al_b2b_log_checkout_bridge_error($message, $context = array()) {
 		}
 	}
 
-	error_log('[al-b2b-checkout-bridge] ' . $message . (!empty($context) ? ' ' . wp_json_encode($context) : '')); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	// Fall back to error_log only when the deployer has opted in to debug
+	// logging — checkout-bridge context can include cart/product IDs that
+	// we don't want spamming production logs by default.
+	if (defined('WP_DEBUG') && WP_DEBUG) {
+		error_log('[al-b2b-checkout-bridge] ' . $message . (!empty($context) ? ' ' . wp_json_encode($context) : '')); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	}
 }
 
 function al_b2b_get_checkout_bridge_failure_url($code) {
@@ -4119,6 +4124,14 @@ function al_b2b_handle_brevo_webhook($request) {
 }
 
 function al_b2b_track_marketing_event($request) {
+	// Phase 3g audit fix: protect the public ingest from being a write-amp
+	// vector for arbitrary clients. 60 events / 5 min / IP is generous for a
+	// real storefront pageview stream and bounds abuse.
+	$limit = al_b2b_guard_rate_limit('marketing_track', 60, 5 * MINUTE_IN_SECONDS);
+	if (is_wp_error($limit)) {
+		return $limit;
+	}
+
 	$body = al_b2b_get_json_body($request);
 	$event_name = isset($body['event']) ? sanitize_key((string) $body['event']) : '';
 	$email = isset($body['email']) ? sanitize_email((string) $body['email']) : '';
