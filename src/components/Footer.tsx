@@ -112,6 +112,7 @@ export default function Footer() {
                 <p className="subtitle text-gray2">Contact Us</p>
                 <ul>
                   <li><a href="mailto:info@aestheticslink.com" className="link">info@aestheticslink.com</a></li>
+                  <li><span className="link">Bolton, England</span></li>
                   <li><a href="tel:+111122223333" className="link">01614136032</a></li>
                 </ul>
               </div>
