@@ -56,6 +56,7 @@ require_once __DIR__ . '/includes/modules/class-module-marketing-events.php';
 require_once __DIR__ . '/includes/modules/class-module-reviews.php';
 require_once __DIR__ . '/includes/modules/class-module-checkout-bridge.php';
 require_once __DIR__ . '/includes/modules/class-module-order-receipt.php';
+require_once __DIR__ . '/includes/modules/class-module-wishlist.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
