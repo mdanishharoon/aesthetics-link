@@ -63,6 +63,78 @@ function Stars({ rating, size = "sm" }: { rating: number; size?: "sm" | "lg" }) 
   );
 }
 
+type ProductGalleryImage = {
+  src: string;
+  alt: string;
+  label: string;
+};
+
+function ProductGallery({
+  images,
+  activeIndex,
+  onChange,
+}: {
+  images: ProductGalleryImage[];
+  activeIndex: number;
+  onChange: (index: number) => void;
+}) {
+  const activeImage = images[activeIndex] ?? images[0];
+
+  if (!activeImage) {
+    return null;
+  }
+
+  const goTo = (direction: -1 | 1) => {
+    const nextIndex = (activeIndex + direction + images.length) % images.length;
+    onChange(nextIndex);
+  };
+
+  return (
+    <div className="product-gallery" aria-label="Product images">
+      <div className="product-gallery__stage">
+        <Image
+          src={activeImage.src}
+          alt={activeImage.alt}
+          fill
+          priority={activeIndex === 0}
+          sizes="55vw"
+          style={{ objectFit: "cover" }}
+        />
+        {images.length > 1 ? (
+          <div className="product-gallery__controls">
+            <button type="button" onClick={() => goTo(-1)} aria-label="Previous product image">
+              <ArrowLongIcon />
+            </button>
+            <span>
+              {String(activeIndex + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
+            </span>
+            <button type="button" onClick={() => goTo(1)} aria-label="Next product image">
+              <ArrowLongIcon />
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {images.length > 1 ? (
+        <div className="product-gallery__thumbs" aria-label="Choose product image">
+          {images.map((image, index) => (
+            <button
+              type="button"
+              key={`${image.src}:${image.label}`}
+              className={`product-gallery__thumb${index === activeIndex ? " is-active" : ""}`}
+              onClick={() => onChange(index)}
+              aria-label={`Show ${image.label.toLowerCase()} image`}
+              aria-pressed={index === activeIndex}
+            >
+              <Image src={image.src} alt="" fill sizes="6rem" style={{ objectFit: "cover" }} />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function normalizeVariationComparable(value: string): string {
   return value
     .replace(/&amp;/gi, "&")
@@ -171,6 +243,7 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
   const reviewSubmitInFlightRef = useRef<Promise<void> | null>(null);
   const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
   const [reviewsModalTab, setReviewsModalTab] = useState<"read" | "write">("read");
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   function openReviewsModal(tab: "read" | "write") {
     setReviewsModalTab(tab);
@@ -374,6 +447,24 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
   const reviewItems = useMemo<StorefrontProductReview[]>(() => {
     return reviewsQuery.data?.reviews ?? [];
   }, [reviewsQuery.data?.reviews]);
+  const titleWords = product.shortName.trim().split(/\s+/).filter(Boolean);
+  const titleLead = titleWords.length > 1 ? titleWords.slice(0, -1).join(" ") : product.shortName;
+  const titleAccent = titleWords.length > 1 ? titleWords[titleWords.length - 1] ?? null : null;
+  const galleryImages = useMemo<ProductGalleryImage[]>(() => {
+    const candidates: ProductGalleryImage[] = [
+      { src: product.images.hero, alt: product.images.heroAlt, label: "Main" },
+      { src: product.images.detail, alt: product.images.detailAlt, label: "Detail" },
+      { src: product.images.texture, alt: `${product.name} texture`, label: "Texture" },
+    ];
+    const seen = new Set<string>();
+    return candidates.filter((image) => {
+      if (!image.src || seen.has(image.src)) {
+        return false;
+      }
+      seen.add(image.src);
+      return true;
+    });
+  }, [product.images.detail, product.images.detailAlt, product.images.hero, product.images.heroAlt, product.images.texture, product.name]);
 
   useEffect(() => {
     if (trackedViewRef.current) {
@@ -566,11 +657,14 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
             </Link>
             <span className="pill product-intro__pill">{product.category}</span>
             <h1 className="product-intro__title">
-              {product.shortName.split(" ").slice(0, -1).join(" ")}{" "}
-              <br />
-              <span className="font-serif">
-                {product.shortName.split(" ").slice(-1)[0]}
-              </span>
+              {titleLead}
+              {titleAccent ? (
+                <>
+                  {" "}
+                  <br />
+                  <span className="font-serif">{titleAccent}</span>
+                </>
+              ) : null}
             </h1>
             <p className="product-intro__tagline">{product.tagline}</p>
             {reviewSummary ? (
@@ -580,15 +674,13 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
                 <span className="product-rating-badge__count">({reviewSummary.count} reviews)</span>
               </button>
             ) : null}
-            <p className="product-intro__price" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <p className="product-intro__price">
               {effectiveRegularPrice && effectiveRegularPrice !== effectivePrice ? (
-                <span style={{ opacity: 0.6, textDecoration: "line-through", fontSize: "0.8em" }}>{effectiveRegularPrice}</span>
+                <span className="product-intro__price-was">{effectiveRegularPrice}</span>
               ) : null}
               <span>{effectivePrice}</span>
               {isWholesalePrice ? (
-                <span style={{ fontSize: "0.6em", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-gray2)" }}>
-                  Wholesale
-                </span>
+                <span className="product-intro__price-note">Wholesale</span>
               ) : null}
             </p>
             {isVariableProduct ? (
@@ -631,15 +723,6 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
                     ? "Adding..."
                     : "Add to Bag"}
             </button>
-            <button
-              type="button"
-              className="product-back__link product-back__link--btn"
-              style={{ marginTop: "0.6rem" }}
-              onClick={() => openReviewsModal("write")}
-              disabled={reviewSubmitting}
-            >
-              <p>{reviewSubmitting ? "Submitting..." : "Write a Review"}</p>
-            </button>
             {reviewFeedback ? (
               <p
                 className={`product-intro__status product-intro__status--${reviewFeedback.tone}`}
@@ -668,74 +751,14 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
               </p>
             ) : null}
 
-            <div className="product-trust">
-              <div className="product-trust__item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                  <circle cx="5.5" cy="18.5" r="2" stroke="currentColor" strokeWidth="1.5"/>
-                  <circle cx="19.5" cy="18.5" r="2" stroke="currentColor" strokeWidth="1.5"/>
-                </svg>
-                <span>Free UK delivery over £50</span>
-              </div>
-              <div className="product-trust__item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M3 3v5h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>Easy 30-day returns</span>
-              </div>
-              <div className="product-trust__item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                <span>Secure checkout</span>
-              </div>
-            </div>
           </div>
 
           <div className="product-intro__image">
-            <div className="product-intro__image-overlay" />
-            <Image
-              src={product.images.hero}
-              alt={product.images.heroAlt}
-              fill
-              sizes="55vw"
-              style={{ objectFit: "cover" }}
-            />
+            <ProductGallery images={galleryImages} activeIndex={galleryIndex} onChange={setGalleryIndex} />
           </div>
         </section>
 
-        {/* ── 2. CLAIM (Ethos-style) ───────────────────────────────── */}
-        <section id="product-claim" className="reveal-up" data-reveal>
-          <div className="container">
-            <div className="product-claim__text">
-              <h2 className="product-claim__headline">
-                {product.claim.headline} <br />
-                <span className="font-serif text-uppercase">
-                  {product.claim.headlineSerif}
-                </span>
-              </h2>
-              <h2 className="product-claim__sub">{product.claim.sub}</h2>
-            </div>
-
-            <div className="product-claim__image">
-              <Image
-                src={product.images.texture}
-                alt={product.name}
-                fill
-                sizes="45vw"
-                style={{ objectFit: "cover" }}
-              />
-            </div>
-
-            <div className="product-claim__desc">
-              <p>{product.description}</p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── 3. BENEFITS (half__grid-style) ──────────────────────── */}
+        {/* ── 2. BENEFITS (half__grid-style) ──────────────────────── */}
         <section id="product-benefits">
           <div className="half__grid reveal-up" data-reveal>
             <div className="half__grid-img">
@@ -751,8 +774,8 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
             <div className="half__grid-content product-benefits__content">
               <div className="product-benefits__head">
                 <h2 className="product-benefits__title">
-                  What it <br />
-                  <span className="font-serif">does.</span>
+                  Visible <br />
+                  <span className="font-serif">results.</span>
                 </h2>
               </div>
 
@@ -776,7 +799,7 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
           </div>
         </section>
 
-        {/* ── 4. KEY INGREDIENTS ──────────────────────────────────── */}
+        {/* ── 3. KEY INGREDIENTS ──────────────────────────────────── */}
         <section id="product-ingredients-list" className="reveal-up" data-reveal>
           <div className="container">
             <div className="product-ing__head">
@@ -801,7 +824,7 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
           </div>
         </section>
 
-        {/* ── 5. HOW TO USE ────────────────────────────────────────── */}
+        {/* ── 4. HOW TO USE ────────────────────────────────────────── */}
         <section id="product-usage" className="reveal-up" data-reveal>
           <div className="container">
             <div className="product-usage__inner">
@@ -825,7 +848,7 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
           </div>
         </section>
 
-        {/* ── 6. REVIEWS ───────────────────────────────────────────── */}
+        {/* ── 5. REVIEWS ───────────────────────────────────────────── */}
         <section id="product-reviews" className="reveal-up" data-reveal>
           <div className="container">
             <div className="reviews__head">
@@ -898,12 +921,12 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
           </div>
         </section>
 
-        {/* ── 7. RELATED PRODUCTS ──────────────────────────────────── */}
+        {/* ── 6. RELATED PRODUCTS ──────────────────────────────────── */}
         {related.length > 0 ? (
           <section id="product-related" className="reveal-up" data-reveal>
             <div className="container">
               <div className="related__head">
-                <h2 className="related__title">You May Also <span className="font-serif">Like</span></h2>
+                <h2 className="related__title">More from <span className="font-serif">the edit</span></h2>
               </div>
               <div className="related__grid">
                 {related.map((item) => (
@@ -929,17 +952,6 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
           </section>
         ) : null}
 
-        {/* ── 8. BACK LINK ─────────────────────────────────────────── */}
-        <section id="product-back" className="reveal-up" data-reveal>
-          <div className="container text-center">
-            <Link href="/products" className="product-back__link">
-              <div className="arrowlong">
-                <ArrowLongIcon />
-              </div>
-              <p>Explore all products</p>
-            </Link>
-          </div>
-        </section>
       </main>
 
       {/* ── REVIEWS MODAL ─────────────────────────────────────────── */}
@@ -978,6 +990,13 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
             <div className="reviews-modal__body">
               {reviewsModalTab === "read" ? (
                 <div className="reviews-modal__read">
+                  <div className="reviews-modal__intro">
+                    <span className="reviews-modal__eyebrow">Customer notes</span>
+                    <h2>What people are saying</h2>
+                    <p>
+                      Read texture, routine, and result notes from customers who have tried this product.
+                    </p>
+                  </div>
                   {reviewSummary ? (
                     <div className="reviews-modal__summary">
                       <div className="reviews-modal__avg-block">
@@ -1035,6 +1054,13 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
                 </div>
               ) : (
                 <div className="reviews-modal__form-wrap">
+                  <div className="reviews-modal__intro reviews-modal__intro--form">
+                    <span className="reviews-modal__eyebrow">Share your notes</span>
+                    <h2>Review this product</h2>
+                    <p>
+                      Keep it useful: mention your skin concern, how you used it, and what changed.
+                    </p>
+                  </div>
                   <form className="review-form" onSubmit={handleSubmitReview}>
                     <div className="review-form__fields">
                       <label className="review-form__field">
@@ -1111,7 +1137,7 @@ export default function ProductDetail({ product, related = [] }: { product: Stor
                         className="btn review-form__submit"
                         disabled={reviewSubmitting || !product.wooId}
                       >
-                        {reviewSubmitting ? "Submitting..." : "Submit Review"}
+                        {reviewSubmitting ? "Submitting..." : "Send Review"}
                       </button>
                       {reviewsQuery.isFetching ? (
                         <span className="review-form__status">Refreshing reviews…</span>

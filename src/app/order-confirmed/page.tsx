@@ -125,88 +125,94 @@ function OrderReceipt({ order }: { order: StorefrontOrderConfirmation }) {
         </div>
       </section>
 
-      <section className={styles.addresses}>
-        <AddressBlock label="Delivery address" address={shippingAddress} />
-        <AddressBlock label="Billing address" address={order.billingAddress} />
-      </section>
-
-      <section className={styles.itemsSection}>
-        <div className={styles.itemsHeader}>
-          <div className={styles.itemsHead}>Line items</div>
-          <p className={styles.itemsCount}>
-            {order.itemCount} confirmed {order.itemCount === 1 ? "item" : "items"}
-          </p>
-        </div>
-
-        <div className={styles.itemsList}>
-          {order.items.map((item) => (
-            <article key={`${item.id}:${item.variationId}:${item.name}`} className={styles.itemRow}>
-              <div>
-                <p className={styles.itemName}>{item.name}</p>
-                <div className={styles.itemMeta}>
-                  <span>Qty {item.quantity}</span>
-                  {item.sku ? <span>SKU {item.sku}</span> : null}
-                  {item.meta.map((meta) => (
-                    <span key={`${item.name}:${meta.label}:${meta.value}`}>
-                      {meta.label}: {meta.value}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.itemQtyPrice}>
-                <span className={styles.itemQty}>{item.unitPrice}</span>
-                <strong className={styles.itemTotal}>{item.lineTotal}</strong>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.footerGrid}>
-        <div className={styles.notes}>
-          <div className={styles.notesListLabel}>Operational notes</div>
-          <ul className={styles.notesList}>
-            <li>A confirmation email has been issued to the billing contact.</li>
-            <li>Keep order #{order.orderNumber} for account or support queries.</li>
-            <li>Delivery updates will follow once fulfillment begins.</li>
-          </ul>
-
-          {order.customerNote ? (
-            <div className={styles.customerNote}>
-              <span>Order note</span>
-              <p>{order.customerNote}</p>
+      <div className={styles.receiptWorkspace}>
+        <div className={styles.receiptMain}>
+          <section className={styles.itemsSection}>
+            <div className={styles.itemsHeader}>
+              <div className={styles.itemsHead}>Line items</div>
+              <p className={styles.itemsCount}>
+                {order.itemCount} confirmed {order.itemCount === 1 ? "item" : "items"}
+              </p>
             </div>
-          ) : null}
+
+            <div className={styles.itemsList}>
+              {order.items.map((item) => (
+                <article key={`${item.id}:${item.variationId}:${item.name}`} className={styles.itemRow}>
+                  <div>
+                    <p className={styles.itemName}>{item.name}</p>
+                    <div className={styles.itemMeta}>
+                      <span>Qty {item.quantity}</span>
+                      {item.sku ? <span>SKU {item.sku}</span> : null}
+                      {item.meta.map((meta) => (
+                        <span key={`${item.name}:${meta.label}:${meta.value}`}>
+                          {meta.label}: {meta.value}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={styles.itemQtyPrice}>
+                    <span className={styles.itemQty}>{item.unitPrice}</span>
+                    <strong className={styles.itemTotal}>{item.lineTotal}</strong>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <OrderCompletionMarketing
+            orderId={order.orderId}
+            orderNumber={order.orderNumber}
+            itemCount={order.itemCount}
+            total={order.totals.total}
+            billingEmail={order.billingAddress.email ?? ""}
+          />
         </div>
 
-        <div className={styles.totals}>
-          <div className={styles.totalRow}>
-            <span className={styles.totalLabel}>Subtotal</span>
-            <strong className={styles.totalValue}>{order.totals.subtotal}</strong>
-          </div>
-          <div className={styles.totalRow}>
-            <span className={styles.totalLabel}>Shipping</span>
-            <strong className={styles.totalValue}>{order.totals.shipping}</strong>
-          </div>
-          <div className={styles.totalRow}>
-            <span className={styles.totalLabel}>Tax</span>
-            <strong className={styles.totalValue}>{order.totals.tax}</strong>
-          </div>
-          <div className={styles.grandTotal}>
-            <span className={styles.totalLabel}>Total</span>
-            <strong className={styles.totalValue}>{order.totals.total}</strong>
-          </div>
-        </div>
-      </section>
+        <aside className={styles.receiptAside} aria-label="Receipt summary">
+          <section className={styles.addresses}>
+            <AddressBlock label="Delivery address" address={shippingAddress} />
+            <AddressBlock label="Billing address" address={order.billingAddress} />
+          </section>
 
-      <OrderCompletionMarketing
-        orderId={order.orderId}
-        orderNumber={order.orderNumber}
-        itemCount={order.itemCount}
-        total={order.totals.total}
-        billingEmail={order.billingAddress.email ?? ""}
-      />
+          <section className={styles.footerGrid}>
+            <div className={styles.totals}>
+              <div className={styles.totalRow}>
+                <span className={styles.totalLabel}>Subtotal</span>
+                <strong className={styles.totalValue}>{order.totals.subtotal}</strong>
+              </div>
+              <div className={styles.totalRow}>
+                <span className={styles.totalLabel}>Shipping</span>
+                <strong className={styles.totalValue}>{order.totals.shipping}</strong>
+              </div>
+              <div className={styles.totalRow}>
+                <span className={styles.totalLabel}>Tax</span>
+                <strong className={styles.totalValue}>{order.totals.tax}</strong>
+              </div>
+              <div className={styles.grandTotal}>
+                <span className={styles.totalLabel}>Total</span>
+                <strong className={styles.totalValue}>{order.totals.total}</strong>
+              </div>
+            </div>
+
+            <div className={styles.notes}>
+              <div className={styles.notesListLabel}>Operational notes</div>
+              <ul className={styles.notesList}>
+                <li>A confirmation email has been issued to the billing contact.</li>
+                <li>Keep order #{order.orderNumber} for account or support queries.</li>
+                <li>Delivery updates will follow once fulfillment begins.</li>
+              </ul>
+
+              {order.customerNote ? (
+                <div className={styles.customerNote}>
+                  <span>Order note</span>
+                  <p>{order.customerNote}</p>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        </aside>
+      </div>
     </article>
   );
 }
