@@ -1,0 +1,3 @@
+Contact: mailto:security@aestheticslink.com
+Preferred-Languages: en
+Canonical: https://www.aestheticslink.com/.well-known/security.txt

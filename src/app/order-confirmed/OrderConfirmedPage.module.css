@@ -20,6 +20,11 @@
   gap: clamp(0.9rem, 1.8vw, 1.25rem);
 }
 
+.receipt :global(section),
+.fallback :global(section) {
+  margin: 0;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(18rem, 0.82fr);
