@@ -72,15 +72,28 @@ class AL_B2B_Module_Real_Time_Stock implements AL_B2B_Module_Interface {
 		if (!$order instanceof WC_Order) {
 			return;
 		}
+
+		// Batch every line item into a single webhook so a 50-item B2B order
+		// triggers one outbound HTTP call, not 50.
+		$items = array();
 		foreach ($order->get_items() as $item) {
 			if (!$item instanceof WC_Order_Item_Product) {
 				continue;
 			}
 			$product = $item->get_product();
 			if ($product instanceof WC_Product) {
-				$this->dispatcher->dispatch('stock.updated', $this->shape_payload($product));
+				$items[] = $this->shape_payload($product);
 			}
 		}
+
+		if ($items === array()) {
+			return;
+		}
+
+		$this->dispatcher->dispatch('stock.batch_updated', array(
+			'orderId'  => $order->get_id(),
+			'products' => $items,
+		));
 	}
 
 	public function handle_get_stock(WP_REST_Request $request) {
