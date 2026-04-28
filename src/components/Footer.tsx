@@ -111,7 +111,7 @@ export default function Footer() {
               <div className="col-md-4 col-12 mt-5 mt-md-0">
                 <p className="subtitle text-gray2">Contact Us</p>
                 <ul>
-                  <li><a href="mailto:hello@aestheticslink.com" className="link">hello@aestheticslink.com</a></li>
+                  <li><a href="mailto:info@aestheticslink.com" className="link">info@aestheticslink.com</a></li>
                   <li><a href="tel:+111122223333" className="link">01614136032</a></li>
                 </ul>
               </div>
