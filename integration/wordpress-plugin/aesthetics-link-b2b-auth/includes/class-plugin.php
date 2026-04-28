@@ -99,6 +99,9 @@ final class AL_B2B_Plugin {
 		// Auth REST routes (always on - auth is core).
 		add_action('rest_api_init', array($this->auth_controller, 'register_routes'));
 
+		// Admin settings page (always on; manage_options users only).
+		(new AL_B2B_Admin())->register();
+
 		// Feature modules. Each one is opt-in via config['modules']; the
 		// registry only calls register() on those whose flag is true AND
 		// whose own is_enabled() returns true.

@@ -65,6 +65,8 @@ require_once __DIR__ . '/includes/modules/class-module-faceted-search.php';
 require_once __DIR__ . '/includes/modules/class-module-subscriptions.php';
 require_once __DIR__ . '/includes/modules/class-module-multi-currency.php';
 require_once __DIR__ . '/includes/modules/class-module-multi-language.php';
+require_once __DIR__ . '/includes/admin/class-settings.php';
+require_once __DIR__ . '/includes/admin/class-admin.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 AL_B2B_Plugin::instance()->boot();
