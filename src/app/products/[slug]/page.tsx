@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getDetailProductBySlug, getCatalogProducts } from "@/lib/storefront/server";
+import { SITE_NAME, toAbsoluteUrl } from "@/lib/site";
 import ProductDetail from "./ProductDetail";
 
 type Props = {
@@ -13,9 +14,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await getDetailProductBySlug(slug);
   if (!product) return {};
+  const canonicalPath = `/products/${product.slug}`;
   return {
-    title: `${product.name} — AestheticsLink`,
+    title: product.name,
     description: product.description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      type: "website",
+      url: toAbsoluteUrl(canonicalPath),
+      siteName: SITE_NAME,
+      title: product.name,
+      description: product.description,
+      images: product.images?.detail
+        ? [
+            {
+              url: product.images.detail,
+              alt: product.name,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: product.description,
+      images: product.images?.detail ? [product.images.detail] : undefined,
+    },
   };
 }
 
