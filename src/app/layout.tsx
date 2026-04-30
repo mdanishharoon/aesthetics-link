@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import LenisProvider from "@/components/LenisProvider";
 import QueryProvider from "@/components/QueryProvider";
 import StorefrontNavigationProvider from "@/components/StorefrontNavigationProvider";
@@ -55,6 +56,52 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Script
+          id="google-tag-manager"
+          src="https://www.googletagmanager.com/gtag/js?id=G-E84LVBTR3W"
+          strategy="afterInteractive"
+        />
+        <Script
+          id="google-tag-config"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-E84LVBTR3W');
+            `,
+          }}
+        />
+
+        <Script
+          id="meta-pixel"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '997874069258538');
+              fbq('track', 'PageView');
+            `,
+          }}
+        />
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src="https://www.facebook.com/tr?id=997874069258538&ev=PageView&noscript=1"
+            alt=""
+          />
+        </noscript>
+
         <a href="#main" className="skip-to-content">Skip to main content</a>
         <StorefrontNavigationProvider navigation={navigation}>
           <QueryProvider>
